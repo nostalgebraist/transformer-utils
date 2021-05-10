@@ -10,13 +10,7 @@ _TFM_CONV1D_ORIGINAL = transformers.modeling_utils.Conv1D
 
 
 def init_weights_without_init(self):
-    # Prune heads if needed
-    if self.config.pruned_heads:
-        self.prune_heads(self.config.pruned_heads)
-
-    # Tie weights if needed
-    self.tie_weights()
-
+    pass
 
 class LazyLinearAPICompatible(torch.nn.LazyLinear):
     def __init__(self, in_features: int, out_features: int, bias: bool = True) -> None:

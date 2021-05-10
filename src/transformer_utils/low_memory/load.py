@@ -6,6 +6,16 @@ from ..util.module_utils import get_child_module_by_names
 from .load_context import LowMemoryLoadContext
 
 
+def modify_weights_after_load(model):
+    """the part of PreTrainedModel.init_weights that isn't initializing weights"""
+    # Prune heads if needed
+    if model.config.pruned_heads:
+        model.prune_heads(model.config.pruned_heads)
+
+    # Tie weights if needed
+    model.tie_weights()
+
+
 def low_memory_load(
     config_path,
     model_path,
@@ -77,13 +87,13 @@ def low_memory_load(
 
         vprint("loaded params into memory")
 
-        # does stuff like weight tying, now that the weights actually exist
-        model.init_weights()
-
         # does the buffers
         model = model.to(high_memory_device)
 
         vprint("loaded all into memory")
+
+        # does stuff like weight tying, now that the weights actually exist
+        modify_weights_after_load(model)
 
         model.eval()
 
