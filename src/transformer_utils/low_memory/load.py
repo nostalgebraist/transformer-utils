@@ -1,13 +1,15 @@
 import torch
 import transformers
 
-from ..util.python_utils import make_print_if_verbose
-from ..util.module_utils import get_child_module_by_names
+from util.python_utils import make_print_if_verbose
+from util.module_utils import get_child_module_by_names
 from .load_context import LowMemoryLoadContext
 
 
 def low_memory_load(config_path,
                     model_path,
+                    config_cls=None,
+                    model_cls=None,
                     high_memory_device="cuda:0",
                     verbose=True
                     ):
@@ -15,6 +17,12 @@ def low_memory_load(config_path,
 
     if isinstance(high_memory_device, str):
         high_memory_device = torch.device(high_memory_device)
+
+    if config_cls is None:
+        config_cls = transformers.AutoConfig
+
+    if model_cls is None:
+        model_cls = transformers.AutoModelForCausalLM
 
     vprint("start")
 
@@ -26,12 +34,12 @@ def low_memory_load(config_path,
 
         vprint("loaded state dict")
 
-        config = transformers.AutoConfig.from_pretrained(config_path)
+        config = config_cls.from_pretrained(config_path)
 
         vprint("made config obj")
 
         # uses lazy init, no memory
-        model = transformers.AutoModelForCausalLM.from_config(config)
+        model = model_cls.from_config(config)
 
         vprint("made model obj")
 
