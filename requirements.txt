@@ -3,3 +3,4 @@ transformers
 pandas~=0.24
 seaborn
 tqdm
+colorcet

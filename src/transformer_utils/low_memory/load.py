@@ -6,13 +6,14 @@ from ..util.module_utils import get_child_module_by_names
 from .load_context import LowMemoryLoadContext
 
 
-def low_memory_load(config_path,
-                    model_path,
-                    config_cls=None,
-                    model_cls=None,
-                    high_memory_device="cuda:0",
-                    verbose=True
-                    ):
+def low_memory_load(
+    config_path,
+    model_path,
+    config_cls=None,
+    model_cls=None,
+    high_memory_device="cuda:0",
+    verbose=True,
+):
     vprint = make_print_if_verbose(verbose)
 
     if isinstance(high_memory_device, str):
@@ -75,6 +76,9 @@ def low_memory_load(config_path,
         # END gpu --> cpu --> gpu handoff, one leaf module at a time
 
         vprint("loaded params into memory")
+
+        # does stuff like weight tying, now that the weights actually exist
+        model.init_weights()
 
         # does the buffers
         model = model.to(high_memory_device)
