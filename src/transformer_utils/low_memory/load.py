@@ -21,9 +21,6 @@ def low_memory_load(config_path,
     if config_cls is None:
         config_cls = transformers.AutoConfig
 
-    if model_cls is None:
-        model_cls = transformers.AutoModelForCausalLM
-
     vprint("start")
 
     with LowMemoryLoadContext():
@@ -39,7 +36,10 @@ def low_memory_load(config_path,
         vprint("made config obj")
 
         # uses lazy init, no memory
-        model = model_cls.from_config(config)
+        if model_cls is None:
+            model = transformers.AutoModelForCausalLM.from_config(config)
+        else:
+            model = model_cls(config=config)
 
         vprint("made model obj")
 
