@@ -68,7 +68,7 @@ def make_lens_hooks(
         model._layer_logits_handles[name] = handle
 
     if model._last_input_ids_handle is None:
-        handle = model.transformer.wte.register_forward_hook(_record_input_ids_hook)
+        handle = model.transformer.get_input_embeddings().register_forward_hook(_record_input_ids_hook)
         model._last_input_ids_handle = handle
 
 
