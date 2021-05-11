@@ -22,7 +22,6 @@ setup(
     install_requires=[
         'torch',
         'transformers',
-        'pandas~=0.24.2',
         'seaborn',
         'tqdm'
     ],
