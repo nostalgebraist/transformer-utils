@@ -53,4 +53,4 @@ class LowMemoryLoadContext:
         transformers.PreTrainedModel.init_weights = (
             _TFM_PRETRAINED_MODEL_INIT_WEIGHTS_ORIGINAL
         )
-        return exc_type is not None
+        return exc_type is None
