@@ -94,6 +94,7 @@ def num2tok(x, tokenizer):
 def _plot_logit_lens(
     layer_logits,
     tokenizer,
+    input_ids,
     start_ix: int,
     end_ix: int,
     probs=False,
@@ -114,11 +115,23 @@ def _plot_logit_lens(
     _num2tok = np.vectorize(partial(num2tok, tokenizer=tokenizer), otypes=[str])
     aligned_texts = _num2tok(aligned_preds)
 
-    fig = plt.figure(figsize=(1.2 * to_show.shape[1], 10))
+    fig = plt.figure(figsize=(1.5 * to_show.shape[1], 10))
 
     cmap = "Blues_r" if probs else "cet_linear_protanopic_deuteranopic_kbw_5_98_c40"
 
-    sns.heatmap(to_show, cmap=cmap, annot=aligned_texts, fmt="")
+    sns.heatmap(to_show, cmap=cmap, annot=aligned_texts, fmt="", )
+
+    ax = plt.gca()
+    input_tokens_str = _num2tok(input_ids[0].cpu())
+    ax.set_xticklabels(input_tokens_str[start_ix:end_ix], rotation=0)
+
+    tick_locs = ax.get_xticks()
+
+    ax_top = ax.twiny()
+    padw = 0.5/(end_ix - start_ix)
+    ax_top.set_xticks(np.linspace(padw, 1 - padw, end_ix - start_ix))
+    ax_top.set_xticklabels(input_tokens_str[start_ix+1:end_ix+1], rotation=0)
+
 
 
 def plot_logit_lens(
@@ -136,6 +149,7 @@ def plot_logit_lens(
     _plot_logit_lens(
         layer_logits=layer_logits,
         tokenizer=tokenizer,
+        input_ids=input_ids,
         start_ix=start_ix,
         end_ix=end_ix,
         probs=probs
