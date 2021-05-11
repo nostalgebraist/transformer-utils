@@ -100,10 +100,12 @@ def _plot_logit_lens(
 ):
     layer_preds, layer_probs = postprocess_logits(layer_logits)
 
+    final_preds = layer_preds[-1]
+
     if probs:
-        to_show = get_value_at_preds(layer_probs, layer_preds)
+        to_show = get_value_at_preds(layer_probs, final_preds)
     else:
-        to_show = get_value_at_preds(layer_logits, layer_preds)
+        to_show = get_value_at_preds(layer_logits, final_preds)
 
     to_show = to_show[:, start_ix:end_ix][::-1]
 
@@ -114,7 +116,7 @@ def _plot_logit_lens(
 
     fig = plt.figure(figsize=(1.2 * to_show.shape[1], 10))
 
-    cmap = ("Blues_r" if probs else "cet_linear_protanopic_deuteranopic_kbw_5_98_c40",)
+    cmap = "Blues_r" if probs else "cet_linear_protanopic_deuteranopic_kbw_5_98_c40"
 
     sns.heatmap(to_show, cmap=cmap, annot=aligned_texts, fmt="")
 
