@@ -21,6 +21,10 @@ def make_lens_hooks(
         if not hasattr(model, attr):
             setattr(model, attr, {})
 
+    if not hasattr(model, "_last_input_ids"):
+        model._last_input_ids = None
+        model._last_input_ids_handle = None
+
     if not hasattr(model, "_ln_base"):
         # TODO: use
         model._ln_base = (
@@ -45,6 +49,9 @@ def make_lens_hooks(
 
         return _record_logits_hook
 
+    def _record_input_ids_hook(module, input, output):
+        model._last_input_ids = input[0]
+
     def _hook_already_there(name):
         handle = model._layer_logits_handles.get(name)
         if not handle:
@@ -60,11 +67,21 @@ def make_lens_hooks(
         handle = layer.register_forward_hook(_make_record_logits_hook(name))
         model._layer_logits_handles[name] = handle
 
+    if model._last_input_ids_handle is None:
+        handle = model.transformer.wte.register_forward_hook(_record_input_ids_hook)
+        model._last_input_ids_handle = handle
+
 
 def collect_logits(model, input_ids):
-    with torch.no_grad():
-        out = model(input_ids)
-    del out
+    needs_forward = True
+    if model._last_input_ids is not None:
+        if model._last_input_ids.shape == input_ids.shape:
+            needs_forward = not (model._last_input_ids == input_ids).cpu().all()
+
+    if needs_forward:
+        with torch.no_grad():
+            out = model(input_ids)
+        del out
 
     layer_logits = torch.cat(
         [model._layer_logits[name] for name in sorted(model._layer_logits.keys())],
@@ -136,7 +153,14 @@ def _plot_logit_lens(
     ax_top = ax.twiny()
     padw = 0.5 / (end_ix - start_ix)
     ax_top.set_xticks(np.linspace(padw, 1 - padw, end_ix - start_ix))
-    ax_top.set_xticklabels(input_tokens_str[start_ix + 1 : end_ix + 1], rotation=0)
+
+    starred = [
+        "* " + true if pred == true else " " + true
+        for pred, true in zip(
+            aligned_texts[0], input_tokens_str[start_ix + 1 : end_ix + 1]
+        )
+    ]
+    ax_top.set_xticklabels(starred, rotation=0)
 
 
 def plot_logit_lens(
@@ -149,7 +173,7 @@ def plot_logit_lens(
 ):
     make_lens_hooks(model, verbose=False)
 
-    layer_logits = collect_logits(model, input_ids[:, :end_ix])
+    layer_logits = collect_logits(model, input_ids)
 
     _plot_logit_lens(
         layer_logits=layer_logits,
