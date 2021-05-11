@@ -16,7 +16,7 @@ setup(
     author="nostalgebraist",
     author_email="nostalgebraist@gmail.com",
     license="MIT",
-    version='0.0.5',
+    version='0.0.6',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     install_requires=[
