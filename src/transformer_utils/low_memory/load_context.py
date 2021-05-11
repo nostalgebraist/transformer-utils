@@ -5,12 +5,15 @@ from torch.nn.parameter import UninitializedParameter
 
 _TORCH_NN_ORIGINAL_LINEAR = torch.nn.Linear
 
-_TFM_PRETRAINED_MODEL_INIT_WEIGHTS_ORIGINAL = transformers.modeling_utils.PreTrainedModel.init_weights
+_TFM_PRETRAINED_MODEL_INIT_WEIGHTS_ORIGINAL = (
+    transformers.modeling_utils.PreTrainedModel.init_weights
+)
 _TFM_CONV1D_ORIGINAL = transformers.modeling_utils.Conv1D
 
 
 def init_weights_without_init(self):
     pass
+
 
 class LazyLinearAPICompatible(torch.nn.LazyLinear):
     def __init__(self, in_features: int, out_features: int, bias: bool = True) -> None:
@@ -47,5 +50,7 @@ class LowMemoryLoadContext:
     def __exit__(self, exc_type, exc_value, exc_traceback):
         torch.nn.Linear = _TORCH_NN_ORIGINAL_LINEAR
         transformers.modeling_utils.Conv1D = _TFM_CONV1D_ORIGINAL
-        transformers.PreTrainedModel.init_weights = _TFM_PRETRAINED_MODEL_INIT_WEIGHTS_ORIGINAL
+        transformers.PreTrainedModel.init_weights = (
+            _TFM_PRETRAINED_MODEL_INIT_WEIGHTS_ORIGINAL
+        )
         return exc_type is not None
