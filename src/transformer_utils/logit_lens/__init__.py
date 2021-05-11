@@ -84,10 +84,10 @@ def postprocess_logits(layer_logits):
 
 
 def get_value_at_preds(values, preds):
-    return np.stack([values[:, j, preds[j]] for j in range(len(preds))], axis=-1)
+    return np.stack([values[:, j, preds[j]] for j in range(preds.shape[-1])], axis=-1)
 
 
-def num2tok(tokenizer, x):
+def num2tok(x, tokenizer):
     return str(tokenizer.decode([x]))
 
 
