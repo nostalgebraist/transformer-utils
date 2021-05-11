@@ -40,6 +40,7 @@ def make_lens_hooks(
         model._layer_logits[name] = None
 
         def _record_logits_hook(module, input, output) -> None:
+            del model._layer_logits[name]
             model._layer_logits[name] = model.lm_head(model.transformer.ln_f(output[0]))
 
         return _record_logits_hook
@@ -119,7 +120,12 @@ def _plot_logit_lens(
 
     cmap = "Blues_r" if probs else "cet_linear_protanopic_deuteranopic_kbw_5_98_c40"
 
-    sns.heatmap(to_show, cmap=cmap, annot=aligned_texts, fmt="", )
+    sns.heatmap(
+        to_show,
+        cmap=cmap,
+        annot=aligned_texts,
+        fmt="",
+    )
 
     ax = plt.gca()
     input_tokens_str = _num2tok(input_ids[0].cpu())
@@ -128,10 +134,9 @@ def _plot_logit_lens(
     tick_locs = ax.get_xticks()
 
     ax_top = ax.twiny()
-    padw = 0.5/(end_ix - start_ix)
+    padw = 0.5 / (end_ix - start_ix)
     ax_top.set_xticks(np.linspace(padw, 1 - padw, end_ix - start_ix))
-    ax_top.set_xticklabels(input_tokens_str[start_ix+1:end_ix+1], rotation=0)
-
+    ax_top.set_xticklabels(input_tokens_str[start_ix + 1 : end_ix + 1], rotation=0)
 
 
 def plot_logit_lens(
@@ -144,7 +149,7 @@ def plot_logit_lens(
 ):
     make_lens_hooks(model, verbose=False)
 
-    layer_logits = collect_logits(model, input_ids)
+    layer_logits = collect_logits(model, input_ids[:, :end_ix])
 
     _plot_logit_lens(
         layer_logits=layer_logits,
@@ -152,5 +157,5 @@ def plot_logit_lens(
         input_ids=input_ids,
         start_ix=start_ix,
         end_ix=end_ix,
-        probs=probs
+        probs=probs,
     )
