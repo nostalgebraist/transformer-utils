@@ -36,6 +36,10 @@ def low_memory_load(
     vprint("start")
 
     with LowMemoryLoadContext():
+        config = config_cls.from_pretrained(config_path)
+
+        vprint("made config obj")
+
         state_dict = torch.load(
             model_path,
             map_location=high_memory_device,
@@ -44,10 +48,6 @@ def low_memory_load(
         state_dict = normalize_inconsistent_state_dict_keys(state_dict)
 
         vprint("loaded state dict")
-
-        config = config_cls.from_pretrained(config_path)
-
-        vprint("made config obj")
 
         # uses lazy init, no memory
         if model_cls is None:
