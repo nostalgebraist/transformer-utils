@@ -12,6 +12,15 @@ from ..util.python_utils import make_print_if_verbose
 from ..util.module_utils import get_child_module_by_names
 
 
+def final_layernorm_locator(model: nn.Module):
+    # TODO: more principled way?
+    names = ['ln_f', 'layernorm']
+    for name in names:
+        if hasattr(model.transformer, name):
+            return lambda: getattr(model.transformer, name)
+    return lambda: lambda x: x
+
+
 def make_lens_hooks(
     model, layer_names: list = None, prefixes: list = ["transformer", "h"], verbose=True
 ):
@@ -24,6 +33,9 @@ def make_lens_hooks(
     if not hasattr(model, "_last_input_ids"):
         model._last_input_ids = None
         model._last_input_ids_handle = None
+
+    if not hasattr(model, "_ln_f_getter"):
+        model._ln_f_getter = final_layernorm_locator(model)
 
     if not hasattr(model, "_ln_base"):
         # TODO: use
@@ -45,7 +57,8 @@ def make_lens_hooks(
 
         def _record_logits_hook(module, input, output) -> None:
             del model._layer_logits[name]
-            model._layer_logits[name] = model.lm_head(model.transformer.ln_f(output[0]))
+            ln_f = model._ln_f_getter()
+            model._layer_logits[name] = model.lm_head(ln_f(output[0]))
 
         return _record_logits_hook
 
