@@ -44,6 +44,7 @@ def discover_call_order(
     for handle in record_call_handles:
         handle.remove()
 
+
 def add_stopping_point_hooks(model, verbose=True):
     vprint = make_print_if_verbose(verbose)
 
@@ -61,7 +62,7 @@ def add_stopping_point_hooks(model, verbose=True):
         if hasattr(model, "_output_sink_names"):
             this_name = indices_to_names[module._call_order_index]
             if this_name in model._output_sink_names:
-                model._output_sink[this_name] = output
+                model._output_sink[model._impl_names_to_user_names[this_name]] = output
 
     def _after_stopping_point_hook(module, input, output) -> None:
         if hasattr(model, "_stopping_point"):
@@ -83,6 +84,7 @@ def add_stopping_point_hooks(model, verbose=True):
         asp_handle = leaf.register_forward_hook(_after_stopping_point_hook)
         leaf._after_stopping_point_handle = asp_handle
 
+
 def last_name_with_prefix(names_to_indices, prefix):
     if prefix in names_to_indices:
         return prefix
@@ -95,7 +97,7 @@ def last_name_with_prefix(names_to_indices, prefix):
     return indices_to_names[last_ix]
 
 
-def partial_forward(model, output_names, *args, verbose=True, might_need_hooks=True, **kwargs,):
+def partial_forward(model, output_names, *args, verbose=False, might_need_hooks=True, **kwargs,):
     vprint = make_print_if_verbose(verbose)
     if might_need_hooks:
         add_stopping_point_hooks(model, verbose=verbose)
@@ -104,10 +106,12 @@ def partial_forward(model, output_names, *args, verbose=True, might_need_hooks=T
 
     names_to_indices = {name: leaf._call_order_index for name, leaf in zip(names, leaves)}
 
-    output_names = {last_name_with_prefix(names_to_indices, name) for name in output_names}
+    impl_names_to_user_names = {last_name_with_prefix(names_to_indices, name): name for name in output_names}
+    output_names = impl_names_to_user_names.keys()
 
     model._stopping_point = max([names_to_indices[name] for name in output_names])
     model._output_sink_names = output_names
+    model._impl_names_to_user_names = impl_names_to_user_names
 
     if hasattr(model, "_output_sink"):
         vprint("clearing existing _output_sink")
