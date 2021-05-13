@@ -107,6 +107,8 @@ def low_memory_load(
         # ensures we materialize the lazy params (and delete the hooks for doing so), before doing anything else
         #
         # if you add pre-hooks before doing this step, you get OrderedDict mutation exceptions
-        model(generic_input.to(high_memory_device))
+        with torch.no_grad():
+            out = model(generic_input.to(high_memory_device))
+            out = None
 
     return model
