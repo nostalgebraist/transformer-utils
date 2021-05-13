@@ -1,6 +1,3 @@
-from .hooks import discover_call_order
-
-
 import torch
 import torch.nn as nn
 
