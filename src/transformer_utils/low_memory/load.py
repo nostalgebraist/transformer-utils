@@ -107,6 +107,6 @@ def low_memory_load(
         # ensures we materialize the lazy params (and delete the hooks for doing so), before doing anything else
         #
         # if you add pre-hooks before doing this step, you get OrderedDict mutation exceptions
-        model(DEFAULT_GENERIC_INPUT)
+        model(generic_input.to(high_memory_device))
 
     return model
