@@ -1,6 +1,3 @@
-import torch
-import torch.nn as nn
-
 from ..util.python_utils import make_print_if_verbose
 
 
@@ -27,11 +24,11 @@ def add_partial_forward_hooks(model, verbose=True, debug=False):
         if hasattr(model, "_output_sink_names"):
 
             this_name = indices_to_names[module._identifying_index]
-            dprint(f'reached output of {repr(this_name)}')
-            dprint(f'model._output_sink_names: {model._output_sink_names}')
+            dprint(f"reached output of {repr(this_name)}")
+            dprint(f"model._output_sink_names: {model._output_sink_names}")
 
             if this_name in model._output_sink_names:
-                dprint(f'{repr(this_name)} in sink')
+                dprint(f"{repr(this_name)} in sink")
 
                 model._output_sink[this_name] = output
 
@@ -39,10 +36,10 @@ def add_partial_forward_hooks(model, verbose=True, debug=False):
         if hasattr(model, "_output_sink_names"):
 
             this_name = indices_to_names[module._identifying_index]
-            dprint(f'reached input of {repr(this_name)}')
+            dprint(f"reached input of {repr(this_name)}")
 
             if all([name in model._output_sink for name in model._output_sink_names]):
-                dprint('have all model._output_sink_names, stopping')
+                dprint("have all model._output_sink_names, stopping")
 
                 raise AfterStoppingPointException
 
@@ -62,7 +59,14 @@ def add_partial_forward_hooks(model, verbose=True, debug=False):
         mod._after_stopping_point_handle = asp_handle
 
 
-def partial_forward(model, output_names, *args, verbose=False, might_need_hooks=True, **kwargs,):
+def partial_forward(
+    model,
+    output_names,
+    *args,
+    verbose=False,
+    might_need_hooks=True,
+    **kwargs,
+):
     vprint = make_print_if_verbose(verbose)
     if might_need_hooks:
         add_partial_forward_hooks(model, verbose=verbose)
