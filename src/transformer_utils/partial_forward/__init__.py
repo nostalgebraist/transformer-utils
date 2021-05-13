@@ -90,13 +90,26 @@ def add_stopping_point_hooks(model, verbose=True):
         asp_handle = leaf.register_forward_hook(_after_stopping_point_hook)
 
 
+def last_name_with_prefix(names_to_indices, prefix):
+    if prefix in names_to_indices:
+        return prefix
+
+    last_ix = max([ix for name, ix in names_to_indices.items() if name.startswith(prefix)])
+
+    indices_to_names = {v: k for k, v in names_to_indices.items()}
+    return indices_to_names[last_ix]
+
+
 def partial_forward(model, output_names, *args, **kwargs):
     names, leaves = get_leaves(model)
 
     names_to_indices = {name: leaf._call_order_index for name, leaf in zip(names, leaves)}
-    model._stopping_point = max([names_to_indices[name] for name in output_names])
 
+    output_names = {last_name_with_prefix(names_to_indices, name) for name in output_names}
+
+    model._stopping_point = max([names_to_indices[name] for name in output_names])
     model._output_sink_names = output_names
+    model._output_sink = {}
 
     try:
         model.forward(*args, **kwargs);
