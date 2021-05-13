@@ -9,7 +9,11 @@ class AfterStoppingPointException(Exception):
     pass
 
 
-def discover_call_order(model: nn.Module, example_input=[[0]], verbose=True):
+def discover_call_order(
+    model: nn.Module,
+    example_input=[[0]],
+    verbose=True
+):
     vprint = make_print_if_verbose(verbose)
 
     names, leaves = get_leaves(model)
@@ -40,24 +44,18 @@ def discover_call_order(model: nn.Module, example_input=[[0]], verbose=True):
     for handle in record_call_handles:
         handle.remove()
 
-
 def add_stopping_point_hooks(model, verbose=True):
     vprint = make_print_if_verbose(verbose)
 
     names, leaves = get_leaves(model)
 
+    if all([hasattr(leaf, "_after_stopping_point_handle") for leaf in leaves]):
+        # not a complete check, but should cover normal situations
+        vprint("stopping point hooks already there, skipping")
+        return
+
     discover_call_order(model, verbose=verbose)
-    indices_to_names = {
-        leaf._call_order_index: name for name, leaf in zip(names, leaves)
-    }
-
-    if hasattr(model, "_output_sink"):
-        vprint("clearing existing _output_sink")
-        for v in model._output_sink.values():
-            del v
-        del model._output_sink
-
-    model._output_sink = {}
+    indices_to_names = {leaf._call_order_index: name for name, leaf in zip(names, leaves)}
 
     def _record_to_sink_hook(module, input, output) -> None:
         if hasattr(model, "_output_sink_names"):
@@ -83,7 +81,7 @@ def add_stopping_point_hooks(model, verbose=True):
             leaf._after_stopping_point_handle.remove()
 
         asp_handle = leaf.register_forward_hook(_after_stopping_point_hook)
-
+        leaf._after_stopping_point_handle = asp_handle
 
 def last_name_with_prefix(names_to_indices, prefix):
     if prefix in names_to_indices:
@@ -97,22 +95,31 @@ def last_name_with_prefix(names_to_indices, prefix):
     return indices_to_names[last_ix]
 
 
-def partial_forward(model, output_names, *args, **kwargs):
+def partial_forward(model, output_names, *args, verbose=True, might_need_hooks=True, **kwargs,):
+    vprint = make_print_if_verbose(verbose)
+    if might_need_hooks:
+        add_stopping_point_hooks(model, verbose=verbose)
+
     names, leaves = get_leaves(model)
 
-    names_to_indices = {
-        name: leaf._call_order_index for name, leaf in zip(names, leaves)
-    }
+    names_to_indices = {name: leaf._call_order_index for name, leaf in zip(names, leaves)}
 
-    output_names = {
-        last_name_with_prefix(names_to_indices, name) for name in output_names
-    }
+    output_names = {last_name_with_prefix(names_to_indices, name) for name in output_names}
 
     model._stopping_point = max([names_to_indices[name] for name in output_names])
     model._output_sink_names = output_names
+
+    if hasattr(model, "_output_sink"):
+        vprint("clearing existing _output_sink")
+        for v in model._output_sink.values():
+            del v
+        del model._output_sink
+
     model._output_sink = {}
 
     try:
         model.forward(*args, **kwargs)
     except AfterStoppingPointException:
         pass
+
+    return model._output_sink
