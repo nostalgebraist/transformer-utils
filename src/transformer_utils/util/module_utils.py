@@ -8,7 +8,7 @@ def get_child_module_by_names(module, names):
     return obj
 
 
-def get_leaves(module, verbose=False):
+def get_leaf_modules(module, verbose=False):
     vprint = make_print_if_verbose(verbose)
 
     names = []

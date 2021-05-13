@@ -2,11 +2,20 @@ import torch
 import torch.nn as nn
 
 from ..util.python_utils import make_print_if_verbose
-from ..util.module_utils import get_leaves
 
 
 class AfterStoppingPointException(Exception):
     pass
+
+
+def _named_modules_in_call_chain(module):
+    names, mods = [], []
+    for name, mod in module.named_modules():
+        if not getattr(mod, "_call_order_index", None):
+            continue
+        names.append(name)
+        mods.append(mod)
+    return names, mods
 
 
 def discover_call_order(
@@ -16,9 +25,7 @@ def discover_call_order(
 ):
     vprint = make_print_if_verbose(verbose)
 
-    names, leaves = get_leaves(model)
-
-    if all([hasattr(leaf, "_call_order_index") for leaf in leaves]):
+    if all([hasattr(mod, "_call_order_index") for _, mod in model.named_modules()]):
         vprint("call order already known, skipping forward pass")
         return
 
@@ -31,58 +38,63 @@ def discover_call_order(
 
     record_call_handles = []
 
-    for name, leaf in zip(names, leaves):
-        rc_handle = leaf.register_forward_hook(_record_call_hook)
+    for name, mod in model.named_modules():
+        rc_handle = mod.register_forward_hook(_record_call_hook)
         record_call_handles.append(rc_handle)
 
     device = list(model.parameters())[0].device
     example_input_th = torch.as_tensor(example_input).to(device)
 
-    model.forward(example_input_th)
+    model(example_input_th)
 
     del model._call_counter
     for handle in record_call_handles:
         handle.remove()
 
 
-def add_stopping_point_hooks(model, verbose=True):
+def add_stopping_point_hooks(model, verbose=True, debug=False):
     vprint = make_print_if_verbose(verbose)
+    dprint = make_print_if_verbose(debug)
 
-    names, leaves = get_leaves(model)
+    discover_call_order(model, verbose=verbose)
 
-    if all([hasattr(leaf, "_after_stopping_point_handle") for leaf in leaves]):
+    names, mods = _named_modules_in_call_chain(model)
+
+    if all([hasattr(mod, "_after_stopping_point_handle") for mod in mods]):
         # not a complete check, but should cover normal situations
         vprint("stopping point hooks already there, skipping")
         return
 
-    discover_call_order(model, verbose=verbose)
-    indices_to_names = {leaf._call_order_index: name for name, leaf in zip(names, leaves)}
+    indices_to_names = {mod._call_order_index: name for name, mod in zip(names, mods)}
 
     def _record_to_sink_hook(module, input, output) -> None:
         if hasattr(model, "_output_sink_names"):
             this_name = indices_to_names[module._call_order_index]
+            dprint(f'reached output of {repr(this_name)}')
             if this_name in model._output_sink_names:
-                model._output_sink[model._impl_names_to_user_names[this_name]] = output
+                model._output_sink[this_name] = output
 
-    def _after_stopping_point_hook(module, input, output) -> None:
+    def _after_stopping_point_hook(module, input) -> None:
         if hasattr(model, "_stopping_point"):
+            this_name = indices_to_names[module._call_order_index]
+            dprint(f'reached input of {repr(this_name)}')
             if module._call_order_index > model._stopping_point:
                 raise AfterStoppingPointException
 
-    for name, leaf in zip(names, leaves):
-        if hasattr(leaf, "_record_to_sink_handle"):
+    for name, mod in zip(names, mods):
+        if hasattr(mod, "_record_to_sink_handle"):
             vprint(f"clearing existing handle at {repr(name)}")
-            leaf._record_to_sink_handle.remove()
+            mod._record_to_sink_handle.remove()
 
-        rts_handle = leaf.register_forward_hook(_record_to_sink_hook)
-        leaf._record_to_sink_handle = rts_handle
+        rts_handle = mod.register_forward_hook(_record_to_sink_hook)
+        mod._record_to_sink_handle = rts_handle
 
-        if hasattr(leaf, "_after_stopping_point_handle"):
+        if hasattr(mod, "_after_stopping_point_handle"):
             vprint(f"clearing existing handle at {repr(name)}")
-            leaf._after_stopping_point_handle.remove()
+            mod._after_stopping_point_handle.remove()
 
-        asp_handle = leaf.register_forward_hook(_after_stopping_point_hook)
-        leaf._after_stopping_point_handle = asp_handle
+        asp_handle = mod.register_forward_pre_hook(_after_stopping_point_hook)
+        mod._after_stopping_point_handle = asp_handle
 
 
 def last_name_with_prefix(names_to_indices, prefix):
@@ -102,16 +114,12 @@ def partial_forward(model, output_names, *args, verbose=False, might_need_hooks=
     if might_need_hooks:
         add_stopping_point_hooks(model, verbose=verbose)
 
-    names, leaves = get_leaves(model)
+    names, mods = _named_modules_in_call_chain(model)
 
-    names_to_indices = {name: leaf._call_order_index for name, leaf in zip(names, leaves)}
-
-    impl_names_to_user_names = {last_name_with_prefix(names_to_indices, name): name for name in output_names}
-    output_names = impl_names_to_user_names.keys()
+    names_to_indices = {name: mod._call_order_index for name, mod in zip(names, mods)}
 
     model._stopping_point = max([names_to_indices[name] for name in output_names])
     model._output_sink_names = output_names
-    model._impl_names_to_user_names = impl_names_to_user_names
 
     if hasattr(model, "_output_sink"):
         vprint("clearing existing _output_sink")
@@ -125,5 +133,7 @@ def partial_forward(model, output_names, *args, verbose=False, might_need_hooks=
         model.forward(*args, **kwargs)
     except AfterStoppingPointException:
         pass
+
+    del model._stopping_point
 
     return model._output_sink
