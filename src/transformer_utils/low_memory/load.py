@@ -7,6 +7,9 @@ from ..util.tfm_utils import normalize_inconsistent_state_dict_keys
 from .load_context import LowMemoryLoadContext
 
 
+DEFAULT_GENERIC_INPUT = torch.as_tensor([[0]])
+
+
 def modify_weights_after_load(model):
     """the part of PreTrainedModel.init_weights that isn't initializing weights"""
     # Prune heads if needed
@@ -23,6 +26,7 @@ def low_memory_load(
     config_cls=None,
     model_cls=None,
     high_memory_device="cuda:0",
+    generic_input=DEFAULT_GENERIC_INPUT,
     verbose=True,
 ):
     vprint = make_print_if_verbose(verbose)
@@ -99,5 +103,10 @@ def low_memory_load(
         modify_weights_after_load(model)
 
         model.eval()
+
+        # ensures we materialize the lazy params (and delete the hooks for doing so), before doing anything else
+        #
+        # if you add pre-hooks before doing this step, you get OrderedDict mutation exceptions
+        model(DEFAULT_GENERIC_INPUT)
 
     return model
