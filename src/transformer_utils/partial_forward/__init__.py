@@ -64,12 +64,13 @@ def partial_forward(
     output_names,
     *args,
     verbose=False,
+    debug=False,
     might_need_hooks=True,
     **kwargs,
 ):
     vprint = make_print_if_verbose(verbose)
     if might_need_hooks:
-        add_partial_forward_hooks(model, verbose=verbose)
+        add_partial_forward_hooks(model, verbose=verbose, debug=debug)
 
     model._output_sink_names = output_names
 
