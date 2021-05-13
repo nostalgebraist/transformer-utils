@@ -8,68 +8,9 @@ class AfterStoppingPointException(Exception):
     pass
 
 
-def _named_modules_in_call_chain(module):
-    names, mods = [], []
-    for name, mod in module.named_modules():
-        if not getattr(mod, "_call_order_index", None):
-            continue
-        names.append(name)
-        mods.append(mod)
-    return names, mods
-
-
-def discover_call_order(
-    model: nn.Module,
-    example_input=[[0]],
-    verbose=True
-):
-    vprint = make_print_if_verbose(verbose)
-
-    if all([hasattr(mod, "_call_order_index")
-            and hasattr(mod, "_return_order_index")
-            for _, mod in model.named_modules()]):
-        vprint("call order already known, skipping forward pass")
-        return
-
-    model._call_counter = 0
-    model._return_counter = 0
-
-    def _record_call_hook(module, input) -> None:
-        current_call_count = model._call_counter
-        module._call_order_index = current_call_count
-        model._call_counter += 1
-
-    def _record_return_hook(module, input, output) -> None:
-        current_return_count = model._return_counter
-        module._return_order_index = current_return_count
-        model._return_counter += 1
-
-    record_call_handles = []
-    record_return_handles = []
-
-    for name, mod in model.named_modules():
-        rc_handle = mod.register_forward_pre_hook(_record_call_hook)
-        record_call_handles.append(rc_handle)
-
-        rr_handle = mod.register_forward_hook(_record_return_hook)
-        record_return_handles.append(rr_handle)
-
-    device = list(model.parameters())[0].device
-    example_input_th = torch.as_tensor(example_input).to(device)
-
-    model(example_input_th)
-
-    del model._call_counter
-    del model._return_counter
-    for handle in record_call_handles + record_return_handles:
-        handle.remove()
-
-
 def add_partial_forward_hooks(model, verbose=True, debug=False):
     vprint = make_print_if_verbose(verbose)
     dprint = make_print_if_verbose(debug)
-
-    # discover_call_order(model, verbose=verbose)
 
     names_to_mods = {}
     indices_to_names = {}
@@ -84,19 +25,25 @@ def add_partial_forward_hooks(model, verbose=True, debug=False):
 
     def _record_to_sink_hook(module, input, output) -> None:
         if hasattr(model, "_output_sink_names"):
+
             this_name = indices_to_names[module._identifying_index]
             dprint(f'reached output of {repr(this_name)}')
             dprint(f'model._output_sink_names: {model._output_sink_names}')
+
             if this_name in model._output_sink_names:
                 dprint(f'{repr(this_name)} in sink')
+
                 model._output_sink[this_name] = output
 
     def _after_stopping_point_hook(module, input) -> None:
         if hasattr(model, "_output_sink_names"):
+
             this_name = indices_to_names[module._identifying_index]
             dprint(f'reached input of {repr(this_name)}')
+
             if all([name in model._output_sink for name in model._output_sink_names]):
                 dprint('have all model._output_sink_names, stopping')
+
                 raise AfterStoppingPointException
 
     for name, mod in zip(names, mods):
