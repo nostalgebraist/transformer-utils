@@ -112,6 +112,6 @@ def partial_forward(model, output_names, *args, **kwargs):
     model._output_sink = {}
 
     try:
-        model.forward(*args, **kwargs);
+        model.forward(*args, **kwargs)
     except AfterStoppingPointException:
         pass
