@@ -89,4 +89,7 @@ def partial_forward(
 
     del model._output_sink_names
 
-    return model._output_sink
+    return_val = model._output_sink
+    del model._output_sink
+
+    return return_val
