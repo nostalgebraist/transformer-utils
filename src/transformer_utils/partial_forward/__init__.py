@@ -71,14 +71,18 @@ def add_stopping_point_hooks(model, verbose=True, debug=False):
         if hasattr(model, "_output_sink_names"):
             this_name = indices_to_names[module._call_order_index]
             dprint(f'reached output of {repr(this_name)}')
+            dprint(f'model._output_sink_names: {model._output_sink_names}')
             if this_name in model._output_sink_names:
+                dprint(f'{repr(this_name)} in sink')
                 model._output_sink[this_name] = output
 
     def _after_stopping_point_hook(module, input) -> None:
         if hasattr(model, "_stopping_point"):
             this_name = indices_to_names[module._call_order_index]
             dprint(f'reached input of {repr(this_name)}')
+            dprint(f'_call_order_index {module._call_order_index} vs _stopping_point {model._stopping_point}')
             if module._call_order_index > model._stopping_point:
+                dprint('stopping')
                 raise AfterStoppingPointException
 
     for name, mod in zip(names, mods):
