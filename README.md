@@ -59,10 +59,10 @@ plot_logit_lens(model, tokenizer, input_ids, start_ix=0, end_ix=45, probs=True) 
 from transformer_utils.partial_forward import partial_forward
 
 output = partial_forward(
-    model=model,  # your model
+    model=model,  # your `transformers` model
     output_names=[
         'h.0',  # output of the 1st layer
-        'h.2.attn.c_attn',  # query/key/value matrix from the 3rd laer
+        'h.2.attn.c_attn',  # query/key/value matrix from the 3rd layer
         'h.5.mlp.c_proj',   #  feed-forward activations from the 6th layer
     ],
     input_ids  # the input to run
@@ -80,18 +80,56 @@ For example, suppose `model` above was GPT-2 XL.  Then it has 48 layers.  But th
 
 This makes it easy to write new "heads" that do further computation on the model's activations.  Examples:
 
-###### Using the first two layers of a model as input  features to a new one
+###### Using the first two layers of a model as features extractors for binary classification
 
 ```python
-from transformer_utils.partial_forward import partial_forward
+output_names=['h.0', 'h.1',]
+classifier_hidden_size=768
 
+feature_vector_size = base_model.config.n_embd * len(output_names)
 
-output = partial_forward(
-    model, ['h.0', 'h.1',], input_ids  # the input to run
+classifier = nn.Sequential(
+    nn.Linear(feature_vector_size, classifier_hidden_size),
+    nn.ReLU(),
+    nn.Linear(classifier_hidden_size, 2),
 )
 
-# each of these is a tensor
-output['h.0']
-output['h.2.attn.c_attn']
-output['h.5.mlp.c_proj']
+opt = torch.optim.Adam(classifier.parameters())
+
+for input_ids, targets in dataset:  # `dataset` is your classification train data
+    with torch.no_grad():
+        hidden_states = partial_forward(
+            base_model,
+            output_names,
+            input_ids,
+        )
+
+    # shape (batch, sequence, len(output_names) * model's hidden size)
+    feature_vector = torch.cat(
+        [hidden_states[name] for name in output_names],
+        dim=-1
+    )
+
+    # shape (batch, sequence, 2)
+    classifier_out = classifier(feature_vector)
+
+    # simple avg pool over sequence dim -- in practice find attention works well for this step :)
+    # shape (batch, 2)
+    logits = classifier_out.mean(dim=1)
+
+    loss = F.cross_entropy(target=targets, input=logits)
+    loss.backward()
+    opt.step()
+    opt.zero_grad()
 ```
+
+
+###### Finetuning the first two layers of a model
+
+This is exactly the same as the above, with just two changes:
+
+- Remove the `with torch.no_grad()` wrapper around `partial_forward`
+- Optimize the base model's params too:
+  - `opt = torch.optim.Adam(list(classifier.parameters()) + list(base_model.parameters()))`
+
+If you want to train a model like these ones for real use, I recommend writing a custom `nn.Module`.  [See here](https://github.com/nostalgebraist/nostalgebraist-autoresponder/blob/fd96e9482186f5dbeaa27bd6179087c892c577d6/selector_model/selector_nn_neo.py#L263) for an example.
