@@ -1,3 +1,5 @@
+import traceback
+
 from ..util.python_utils import make_print_if_verbose
 
 
@@ -83,8 +85,8 @@ def partial_forward(
 
     try:
         model(*args, **kwargs)
-    except AfterStoppingPointException:
-        pass
+    except AfterStoppingPointException as e:
+        traceback.clear_frames(e.__traceback__)
 
     del model._output_sink_names
 
