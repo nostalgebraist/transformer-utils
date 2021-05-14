@@ -55,8 +55,9 @@ def add_partial_forward_hooks(model, verbose=False, debug=False, output_names=No
             vprint(f"clearing existing handle at {repr(name)}")
             mod._record_to_sink_handle.remove()
 
-        rts_handle = mod.register_forward_hook(_record_to_sink_hook)
-        mod._record_to_sink_handle = rts_handle
+        if output_names is None or name in output_names:
+            rts_handle = mod.register_forward_hook(_record_to_sink_hook)
+            mod._record_to_sink_handle = rts_handle
 
 
 def partial_forward(
