@@ -32,12 +32,6 @@ def add_partial_forward_hooks(model, verbose=True, debug=False):
 
                 model._output_sink[this_name] = output
 
-    def _after_stopping_point_hook(module, input) -> None:
-        if hasattr(model, "_output_sink_names"):
-
-            this_name = indices_to_names[module._identifying_index]
-            dprint(f"reached input of {repr(this_name)}")
-
             if all([name in model._output_sink for name in model._output_sink_names]):
                 dprint("have all model._output_sink_names, stopping")
 
@@ -50,13 +44,6 @@ def add_partial_forward_hooks(model, verbose=True, debug=False):
 
         rts_handle = mod.register_forward_hook(_record_to_sink_hook)
         mod._record_to_sink_handle = rts_handle
-
-        if hasattr(mod, "_after_stopping_point_handle"):
-            vprint(f"clearing existing handle at {repr(name)}")
-            mod._after_stopping_point_handle.remove()
-
-        asp_handle = mod.register_forward_pre_hook(_after_stopping_point_hook)
-        mod._after_stopping_point_handle = asp_handle
 
 
 def partial_forward(
