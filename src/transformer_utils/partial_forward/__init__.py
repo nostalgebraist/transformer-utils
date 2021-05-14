@@ -5,25 +5,38 @@ class AfterStoppingPointException(Exception):
     pass
 
 
-def add_partial_forward_hooks(model, verbose=False, debug=False):
+def add_partial_forward_hooks(model, verbose=False, debug=False, output_names=None):
     vprint = make_print_if_verbose(verbose)
     dprint = make_print_if_verbose(debug)
+
+    should_skip = True
 
     names_to_mods = {}
     indices_to_names = {}
     names, mods = [], []
     for i, (name, mod) in enumerate(model.named_modules()):
-        mod._identifying_index = i
+        if hasattr(mod, "_partial_forward_name") and mod._partial_forward_name != name:
+            should_skip = False
+
+        mod._partial_forward_name = name
         indices_to_names[i] = name
 
         names.append(name)
         mods.append(mod)
         names_to_mods[name] = mod
 
+        if output_names is not None:
+            should_have_hook = name in output_names
+            already_has_hook = hasattr(mod, "_record_to_sink_handle")
+            should_skip = should_skip and (should_have_hook == already_has_hook)
+
+    if should_skip:
+        dprint("already have partial forward hooks, skipping")
+        return 
+
     def _record_to_sink_hook(module, input, output) -> None:
         if hasattr(model, "_output_sink_names"):
-
-            this_name = indices_to_names[module._identifying_index]
+            this_name = module._partial_forward_name
             dprint(f"reached output of {repr(this_name)}")
             dprint(f"model._output_sink_names: {model._output_sink_names}")
 
