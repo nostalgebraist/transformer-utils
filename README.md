@@ -81,7 +81,9 @@ For efficiency, `partial_forward` doesn't run any part of the model later than t
 
 For example, suppose `model` above was GPT-2 XL.  Then it has 48 layers.  But the forward pass in the code above stops running after the 6th layer of 48 -- so the compute and memory cost is far lower than a full `model.forward`.
 
-This makes it easy to write new "heads" that do further computation on the model's activations.  Examples:
+This makes it easy to write new "heads" that do further computation on the model's activations.
+
+Some examples:
 
 ##### Using the first two layers of a model as features extractors for binary classification
 
