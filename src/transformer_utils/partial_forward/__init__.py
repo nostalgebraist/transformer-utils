@@ -108,7 +108,11 @@ def add_partial_forward_hooks(model, verbose=False, debug=False, output_names=No
             if this_name in model._output_sink_names:
                 dprint(f"{repr(this_name)} in sink")
 
-                model._output_sink[this_name] = output
+                to_record = output
+                if isinstance(to_record, tuple) and len(to_record) == 1:
+                    to_record = to_record[0]
+
+                model._output_sink[this_name] = to_record
 
             if all([name in model._output_sink for name in model._output_sink_names]):
                 dprint("have all model._output_sink_names, stopping")
