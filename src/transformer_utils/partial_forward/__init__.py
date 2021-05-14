@@ -1,4 +1,18 @@
+import warnings
+
 from ..util.python_utils import make_print_if_verbose
+
+
+PARTIAL_FORWARD_FORCE_FALSE_KWARGS = [
+    "use_cache",
+    "output_attentions",
+    "output_hidden_states",
+    "return_dict"
+]
+
+PARTIAL_FORWARD_FORCE_FALSE_KWARGS_MSG = """`partial_forward` was passed the argument {} but will ignore it.
+
+`partial_forward` ignores arguments that configure output shape in `transformers`, since its output shape is configured entirely through the `output_names` argument."""
 
 
 class AfterStoppingPointException(Exception):
@@ -69,6 +83,12 @@ def partial_forward(
     **kwargs,
 ):
     vprint = make_print_if_verbose(verbose)
+
+    for k in PARTIAL_FORWARD_FORCE_FALSE_KWARGS:
+        if kwargs.get(k):
+            warnings.warn(PARTIAL_FORWARD_FORCE_FALSE_KWARGS_MSG.format(repr(k)))
+        kwargs[k] = False
+
     add_partial_forward_hooks(model, verbose=verbose, debug=debug, output_names=output_names)
 
     model._output_sink_names = output_names
