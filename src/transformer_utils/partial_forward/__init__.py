@@ -9,14 +9,14 @@ def add_partial_forward_hooks(model, verbose=False, debug=False, output_names=No
     vprint = make_print_if_verbose(verbose)
     dprint = make_print_if_verbose(debug)
 
-    should_skip = True
+    can_skip = output_names is not None
 
     names_to_mods = {}
     indices_to_names = {}
     names, mods = [], []
     for i, (name, mod) in enumerate(model.named_modules()):
         if hasattr(mod, "_partial_forward_name") and mod._partial_forward_name != name:
-            should_skip = False
+            can_skip = False
 
         mod._partial_forward_name = name
         indices_to_names[i] = name
@@ -28,11 +28,11 @@ def add_partial_forward_hooks(model, verbose=False, debug=False, output_names=No
         if output_names is not None:
             should_have_hook = name in output_names
             already_has_hook = hasattr(mod, "_record_to_sink_handle")
-            should_skip = should_skip and (should_have_hook == already_has_hook)
+            can_skip = can_skip and (should_have_hook == already_has_hook)
 
-    if should_skip:
+    if can_skip:
         dprint("already have partial forward hooks, skipping")
-        return 
+        return
 
     def _record_to_sink_hook(module, input, output) -> None:
         if hasattr(model, "_output_sink_names"):
@@ -65,12 +65,10 @@ def partial_forward(
     *args,
     verbose=False,
     debug=False,
-    might_need_hooks=True,
     **kwargs,
 ):
     vprint = make_print_if_verbose(verbose)
-    if might_need_hooks:
-        add_partial_forward_hooks(model, verbose=verbose, debug=debug)
+    add_partial_forward_hooks(model, verbose=verbose, debug=debug, output_names=output_names)
 
     model._output_sink_names = output_names
 
