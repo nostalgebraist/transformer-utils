@@ -5,7 +5,7 @@ class AfterStoppingPointException(Exception):
     pass
 
 
-def add_partial_forward_hooks(model, verbose=True, debug=False):
+def add_partial_forward_hooks(model, verbose=False, debug=False):
     vprint = make_print_if_verbose(verbose)
     dprint = make_print_if_verbose(debug)
 
@@ -70,7 +70,7 @@ def partial_forward(
     model._output_sink = {}
 
     try:
-        model.forward(*args, **kwargs)
+        model(*args, **kwargs)
     except AfterStoppingPointException:
         pass
 
