@@ -4,8 +4,11 @@ Utilities for the HuggingFace [transformer](https://github.com/huggingface/trans
 
 This package is unofficial and not associated with HuggingFace.
 
-- Lets you load large (~2.7B) models in low-resource environments like Google Colab
-- Interpreting models with the "logit lens"
+Features:
+
+- Load large (~2.7B) models in low-resource environments like Google Colab
+- Get activations from any part of the model, without running parts you don't need
+- Interpret models with the "logit lens"
   - For background, see
     - ["interpreting GPT: the logit lens"](https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens) by nostalgebraist
     - ["Finding the Words to Say: Hidden State Visualizations for Language Models"](https://jalammar.github.io/hidden-states/) by Jay Alammar
