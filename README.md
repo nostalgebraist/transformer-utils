@@ -13,9 +13,9 @@ Features:
     - ["interpreting GPT: the logit lens"](https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens) by nostalgebraist
     - ["Finding the Words to Say: Hidden State Visualizations for Language Models"](https://jalammar.github.io/hidden-states/) by Jay Alammar
 
-### Example usage
+## Example usage
 
-#### Load in a low-memory environment
+### Load in a low-memory environment
 
 Loading a 2.7B model:
 
@@ -31,7 +31,7 @@ This works fine in an ordinary (non-Pro) Google Colab notebook, with ~12 GB RAM 
 
 Inference will work up to the full context window length of 2048 tokens without memory issues.
 
-#### Logit lens
+### Logit lens
 
 ```python
 import torch
@@ -54,7 +54,7 @@ plot_logit_lens(model, tokenizer, input_ids, start_ix=0, end_ix=45)  # logits
 plot_logit_lens(model, tokenizer, input_ids, start_ix=0, end_ix=45, probs=True)  # probabilities
 ```
 
-#### Get activations from any part of the model
+### Get activations from any part of the model
 
 ###### ...and without running parts you don't need
 
@@ -83,7 +83,7 @@ For example, suppose `model` above was GPT-2 XL.  Then it has 48 layers.  But th
 
 This makes it easy to write new "heads" that do further computation on the model's activations.  Examples:
 
-###### Using the first two layers of a model as features extractors for binary classification
+##### Using the first two layers of a model as features extractors for binary classification
 
 ```python
 output_names=['h.0', 'h.1',]
@@ -127,7 +127,7 @@ for input_ids, targets in dataset:  # `dataset` is your classification train dat
 ```
 
 
-###### Finetuning the first two layers of a model
+##### Finetuning the first two layers of a model
 
 This is exactly the same as the above, with just two changes:
 
