@@ -23,7 +23,7 @@ def fix_config_with_missing_model_type(model_name, config_path):
         json.dump(config, f)
 
 
-def get_local_path_fom_huggingface_cdn(key, filename):
+def get_local_path_from_huggingface_cdn(key, filename):
     archive_file = transformers.file_utils.hf_bucket_url(
         key,
         filename=filename,
@@ -36,11 +36,11 @@ def get_local_path_fom_huggingface_cdn(key, filename):
 
 
 def huggingface_model_local_paths(model_name):
-    config_path = get_local_path_fom_huggingface_cdn(model_name, "config.json")
+    config_path = get_local_path_from_huggingface_cdn(model_name, "config.json")
 
     fix_config_with_missing_model_type(model_name, config_path)
 
-    model_path = get_local_path_fom_huggingface_cdn(model_name, "pytorch_model.bin")
+    model_path = get_local_path_from_huggingface_cdn(model_name, "pytorch_model.bin")
 
     return config_path, model_path
 
