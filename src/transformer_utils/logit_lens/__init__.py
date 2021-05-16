@@ -88,6 +88,19 @@ def make_lens_hooks(
         model._last_input_ids_handle = handle
 
 
+def clear_logit_lens_hooks(model):
+    if hasattr(model, "_layer_logits_handles"):
+        for k, v in model._layer_logits_handles.items():
+            v.remove()
+
+        ks = list(model._layer_logits_handles.keys())
+        for k in ks:
+            del model._layer_logits_handles[k]
+
+    if hasattr(model, "_last_input_ids"):
+        model._last_input_ids = None
+
+
 def collect_logits(model, input_ids):
     needs_forward = True
     if model._last_input_ids is not None:
