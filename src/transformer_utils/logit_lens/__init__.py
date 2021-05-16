@@ -6,7 +6,7 @@ import numpy as np
 import scipy.special
 import seaborn as sns
 import matplotlib.pyplot as plt
-import colorcet
+import colorcet  # noqa
 
 from ..util.python_utils import make_print_if_verbose
 from ..util.module_utils import get_child_module_by_names
@@ -160,6 +160,9 @@ def _plot_logit_lens(
     ax = plt.gca()
     input_tokens_str = _num2tok(input_ids[0].cpu())
     ax.set_xticklabels(input_tokens_str[start_ix:end_ix], rotation=0)
+
+    ylabels = ["Layer {}".format(n) for n in range(to_show.shape[0])][::-1]
+    ax.set_yticklabels(ylabels, rotation=0)
 
     tick_locs = ax.get_xticks()
 
