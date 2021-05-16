@@ -88,7 +88,7 @@ def make_lens_hooks(
         model._last_input_ids_handle = handle
 
 
-def clear_logit_lens_hooks(model):
+def clear_lens_hooks(model):
     if hasattr(model, "_layer_logits_handles"):
         for k, v in model._layer_logits_handles.items():
             v.remove()
