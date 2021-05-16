@@ -58,7 +58,7 @@ def make_lens_hooks(
 
     if layer_names is None:
         h = get_child_module_by_names(model, prefixes + ['h'])
-        layer_names = [str(i) for i in range(len(h))]
+        layer_names = [f"h.{i}" for i in range(len(h))]
 
     def _get_layer(name):
         return get_child_module_by_names(model, prefixes + name.split("."))
