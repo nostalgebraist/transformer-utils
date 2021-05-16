@@ -118,20 +118,20 @@ def get_value_at_preds(values, preds):
     return np.stack([values[:, j, preds[j]] for j in range(preds.shape[-1])], axis=-1)
 
 
-def num2tok(x, tokenizer):
-    return str(tokenizer.decode([x]))
+def num2tok(x, tokenizer, quotemark=''):
+    return quotemark + str(tokenizer.decode([x])) + quotemark
 
 
 def _plot_logit_lens(
     layer_logits,
+    layer_preds,
+    layer_probs,
     tokenizer,
     input_ids,
     start_ix: int,
     end_ix: int,
     probs=False,
 ):
-    layer_preds, layer_probs = postprocess_logits(layer_logits)
-
     final_preds = layer_preds[-1]
 
     if probs:
@@ -143,7 +143,7 @@ def _plot_logit_lens(
 
     aligned_preds = layer_preds[:, start_ix:end_ix][::-1]
 
-    _num2tok = np.vectorize(partial(num2tok, tokenizer=tokenizer), otypes=[str])
+    _num2tok = np.vectorize(partial(num2tok, tokenizer=tokenizer, quotemark='\''), otypes=[str])
     aligned_texts = _num2tok(aligned_preds)
 
     fig = plt.figure(figsize=(1.5 * to_show.shape[1], 10))
@@ -191,8 +191,12 @@ def plot_logit_lens(
 
     layer_logits = collect_logits(model, input_ids)
 
+    layer_preds, layer_probs = postprocess_logits(layer_logits)
+
     _plot_logit_lens(
         layer_logits=layer_logits,
+        layer_preds=layer_preds,
+        layer_probs=layer_probs,
         tokenizer=tokenizer,
         input_ids=input_ids,
         start_ix=start_ix,
