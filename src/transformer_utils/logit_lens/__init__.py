@@ -15,7 +15,7 @@ from ..util.module_utils import get_child_module_by_names
 
 def final_layernorm_locator(model: nn.Module):
     # TODO: more principled way?
-    names = ['ln_f', 'layernorm']
+    names = ["ln_f", "layernorm"]
     for name in names:
         if hasattr(model.transformer, name):
             return lambda: getattr(model.transformer, name)
@@ -82,7 +82,9 @@ def make_lens_hooks(
         model._layer_logits_handles[name] = handle
 
     if model._last_input_ids_handle is None:
-        handle = model.transformer.get_input_embeddings().register_forward_hook(_record_input_ids_hook)
+        handle = model.transformer.get_input_embeddings().register_forward_hook(
+            _record_input_ids_hook
+        )
         model._last_input_ids_handle = handle
 
 
@@ -119,7 +121,7 @@ def get_value_at_preds(values, preds):
     return np.stack([values[:, j, preds[j]] for j in range(preds.shape[-1])], axis=-1)
 
 
-def num2tok(x, tokenizer, quotemark=''):
+def num2tok(x, tokenizer, quotemark=""):
     return quotemark + str(tokenizer.decode([x])) + quotemark
 
 
@@ -141,29 +143,31 @@ def _plot_logit_lens(
     to_show = get_value_at_preds(numeric_input, final_preds)
 
     if ranks:
-      to_show = (numeric_input >= to_show[:, :, np.newaxis]).sum(axis=-1)
+        to_show = (numeric_input >= to_show[:, :, np.newaxis]).sum(axis=-1)
 
     to_show = to_show[:, start_ix:end_ix][::-1]
 
     aligned_preds = layer_preds[:, start_ix:end_ix][::-1]
 
-    _num2tok = np.vectorize(partial(num2tok, tokenizer=tokenizer, quotemark='\''), otypes=[str])
+    _num2tok = np.vectorize(
+        partial(num2tok, tokenizer=tokenizer, quotemark="'"), otypes=[str]
+    )
     aligned_texts = _num2tok(aligned_preds)
 
     fig = plt.figure(figsize=(1.5 * to_show.shape[1], 10))
 
     if ranks:
-      vmin, vmax = 1, 100
-      cmap = "Blues"
-      norm = mpl.colors.LogNorm()
+        vmin, vmax = 1, 100
+        cmap = "Blues"
+        norm = mpl.colors.LogNorm()
     elif probs:
-      vmin, vmax = 0, 1
-      cmap = "Blues_r"
-      norm = None
+        vmin, vmax = 0, 1
+        cmap = "Blues_r"
+        norm = None
     else:
-      vmin, vmax = 0, layer_logits[-1, start_ix:end_ix].max()
-      cmap = "cet_linear_protanopic_deuteranopic_kbw_5_98_c40"
-      norm = None
+        vmin, vmax = 0, layer_logits[-1, start_ix:end_ix].max()
+        cmap = "cet_linear_protanopic_deuteranopic_kbw_5_98_c40"
+        norm = None
 
     sns.heatmap(
         to_show,
