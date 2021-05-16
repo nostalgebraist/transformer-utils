@@ -131,13 +131,16 @@ def _plot_logit_lens(
     start_ix: int,
     end_ix: int,
     probs=False,
+    ranks=False,
 ):
     final_preds = layer_preds[-1]
 
-    if probs:
-        to_show = get_value_at_preds(layer_probs, final_preds)
-    else:
-        to_show = get_value_at_preds(layer_logits, final_preds)
+    numeric_input = layer_probs if probs else layer_logits
+
+    to_show = get_value_at_preds(numeric_input, final_preds)
+
+    if ranks:
+      to_show = (numeric_input >= to_show[:, :, np.newaxis]).sum(axis=-1)
 
     to_show = to_show[:, start_ix:end_ix][::-1]
 
@@ -148,12 +151,17 @@ def _plot_logit_lens(
 
     fig = plt.figure(figsize=(1.5 * to_show.shape[1], 10))
 
-    cmap = "Blues_r" if probs else "cet_linear_protanopic_deuteranopic_kbw_5_98_c40"
+    if ranks:
+      cmap = "RdPu_r"
+    elif probs:
+      cmap = "Blues_r"
+    else:
+     cmap = "cet_linear_protanopic_deuteranopic_kbw_5_98_c40"
 
     sns.heatmap(
         to_show,
         cmap=cmap,
-        annot=aligned_texts,
+        annot=True if ranks else aligned_texts,
         fmt="",
     )
 
@@ -186,6 +194,7 @@ def plot_logit_lens(
     start_ix: int,
     end_ix: int,
     probs=False,
+    ranks=False,
 ):
     make_lens_hooks(model, verbose=False)
 
@@ -202,4 +211,5 @@ def plot_logit_lens(
         start_ix=start_ix,
         end_ix=end_ix,
         probs=probs,
+        ranks=ranks,
     )
