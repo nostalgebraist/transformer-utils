@@ -5,6 +5,7 @@ import torch.nn as nn
 import numpy as np
 import scipy.special
 import seaborn as sns
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import colorcet  # noqa
 
@@ -152,15 +153,24 @@ def _plot_logit_lens(
     fig = plt.figure(figsize=(1.5 * to_show.shape[1], 10))
 
     if ranks:
-      cmap = "RdPu_r"
+      vmin, vmax = 1, 100
+      cmap = "Blues"
+      norm = mpl.colors.LogNorm()
     elif probs:
+      vmin, vmax = 0, 1
       cmap = "Blues_r"
+      norm = None
     else:
-     cmap = "cet_linear_protanopic_deuteranopic_kbw_5_98_c40"
+      vmin, vmax = 0, layer_logits[-1, start_ix:end_ix].max()
+      cmap = "cet_linear_protanopic_deuteranopic_kbw_5_98_c40"
+      norm = None
 
     sns.heatmap(
         to_show,
         cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+        norm=norm,
         annot=True if ranks else aligned_texts,
         fmt="",
     )
