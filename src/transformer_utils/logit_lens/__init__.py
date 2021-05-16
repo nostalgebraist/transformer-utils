@@ -23,9 +23,19 @@ def final_layernorm_locator(model: nn.Module):
 
 
 def make_lens_hooks(
-    model, layer_names: list = None, prefixes: list = ["transformer", "h"], verbose=True
+    model, layer_names: list = None, prefixes: list = ["transformer"], verbose=True
 ):
     vprint = make_print_if_verbose(verbose)
+
+    _RESID_SUFFIXES = {".attn", ".mlp"}
+
+    def _sqz(x):
+        if isinstance(x, torch.Tensor):
+            return x
+        try:
+            return x[0]
+        except:
+            return x
 
     for attr in ["_layer_logits", "_layer_logits_handles"]:
         if not hasattr(model, attr):
@@ -48,18 +58,27 @@ def make_lens_hooks(
 
     if layer_names is None:
         h = get_child_module_by_names(model, prefixes)
-        layer_names = list(range(len(h)))
+        layer_names = [str(i) for i in range(len(h))]
 
     def _get_layer(name):
-        return get_child_module_by_names(model, prefixes + [str(name)])
+        return get_child_module_by_names(model, prefixes + name.split("."))
 
     def _make_record_logits_hook(name):
         model._layer_logits[name] = None
 
+        is_resid = any([name.endswith(s) for s in _RESID_SUFFIXES])
+
         def _record_logits_hook(module, input, output) -> None:
             del model._layer_logits[name]
             ln_f = model._ln_f_getter()
-            model._layer_logits[name] = model.lm_head(ln_f(output[0]))
+
+            if is_resid:
+                decoder_in = model._last_resid + _sqz(output)
+            else:
+                decoder_in = _sqz(output)
+
+            model._layer_logits[name] = model.lm_head(ln_f(decoder_in))
+            model._last_resid = decoder_in
 
         return _record_logits_hook
 
@@ -101,19 +120,25 @@ def clear_lens_hooks(model):
         model._last_input_ids = None
 
 
-def collect_logits(model, input_ids):
+def collect_logits(model, input_ids, layer_names=None):
     needs_forward = True
     if model._last_input_ids is not None:
         if model._last_input_ids.shape == input_ids.shape:
             needs_forward = not (model._last_input_ids == input_ids).cpu().all()
 
+    model._last_resid = None
+
     if needs_forward:
         with torch.no_grad():
             out = model(input_ids)
         del out
+        model._last_resid = None
+
+    if layer_names is None:
+        layer_names = sorted([str(k) for k in model._layer_logits.keys()])
 
     layer_logits = torch.cat(
-        [model._layer_logits[name] for name in sorted(model._layer_logits.keys())],
+        [model._layer_logits[name] for name in layer_names],
         dim=0,
     )
 
@@ -148,6 +173,7 @@ def _plot_logit_lens(
     end_ix: int,
     probs=False,
     ranks=False,
+    layer_names=None,
 ):
     final_preds = layer_preds[-1]
 
@@ -196,7 +222,9 @@ def _plot_logit_lens(
     input_tokens_str = _num2tok(input_ids[0].cpu())
     ax.set_xticklabels(input_tokens_str[start_ix:end_ix], rotation=0)
 
-    ylabels = ["Layer {}".format(n) for n in range(to_show.shape[0])][::-1]
+    if layer_names is None:
+        layer_names = ["Layer {}".format(n) for n in range(to_show.shape[0])]
+    ylabels = layer_names[::-1]
     ax.set_yticklabels(ylabels, rotation=0)
 
     tick_locs = ax.get_xticks()
@@ -222,6 +250,7 @@ def plot_logit_lens(
     end_ix: int,
     probs=False,
     ranks=False,
+    layer_names=None,
 ):
     make_lens_hooks(model, verbose=False)
 
@@ -239,4 +268,5 @@ def plot_logit_lens(
         end_ix=end_ix,
         probs=probs,
         ranks=ranks,
+        layer_names=layer_names,
     )
