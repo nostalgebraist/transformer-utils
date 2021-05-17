@@ -43,7 +43,7 @@ def make_lens_hooks(
         except:
             return x
 
-    def _opt_slice(x):
+    def _opt_slice(x, start_ix, end_ix):
         if not start_ix:
             start_ix = 0
         if not end_ix:
@@ -91,7 +91,7 @@ def make_lens_hooks(
                 decoder_in = _sqz(output)
 
             slice_in = extra_call_before_decoder(decoder_in)
-            sliced = _opt_slice(slice_in)
+            sliced = _opt_slice(slice_in, start_ix, end_ix)
 
             decoder_out = model.lm_head(ln_f(sliced))
 
