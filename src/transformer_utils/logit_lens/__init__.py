@@ -227,14 +227,13 @@ def _plot_logit_lens(
     elif probs:
         plot_kwargs.update({"cmap": "Blues_r", "vmin": 0, "vmax": 1})
     else:
-        vmax = max(
-            layer_logits[-1, :].max(),  # highest value in the final output
-            np.percentile(to_show.reshape(-1), 90),  # 90th %ile over the whole matrix
-        )
+        vmin = np.percentile(to_show.reshape(-1), 5)
+        vmax = np.percentile(to_show.reshape(-1), 95)
+
         plot_kwargs.update(
             {
                 "cmap": "cet_linear_protanopic_deuteranopic_kbw_5_98_c40",
-                "vmin": 0,
+                "vmin": vmin,
                 "vmax": vmax,
             }
         )
