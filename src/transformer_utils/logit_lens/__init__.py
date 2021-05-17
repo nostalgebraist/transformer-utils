@@ -217,10 +217,11 @@ def _plot_logit_lens(
 
     plot_kwargs = {"annot": aligned_texts, "fmt": ""}
     if ranks:
+        vmax = 2000
         plot_kwargs.update(
             {
                 "cmap": "Blues",
-                "norm": mpl.colors.LogNorm(vmin=1, vmax=100),
+                "norm": mpl.colors.LogNorm(vmin=1, vmax=vmax),
                 "annot": True,
             }
         )
