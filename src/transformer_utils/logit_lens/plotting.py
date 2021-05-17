@@ -21,19 +21,22 @@ def _needs_forward(model, input_ids, layer_names, decoder_layer_names, verbose=F
         vprint(f"needs_forward because not instrumented")
         return True
 
-    needs_forward = True
+    needs_forward = False
 
     if model._last_input_ids is not None:
         if model._last_input_ids.shape == input_ids.shape:
             needs_forward = not (model._last_input_ids == input_ids).cpu().all()
-            vprint(f"needs_forward because new input ids")
+            if not (model._last_input_ids == input_ids).cpu().all():
+                vprint(f"needs_forward because new input ids")
+                needs_forward = True
 
     if layer_names is None:
         layer_names = model._ordered_layer_names
     else:
         layers_instrumented = model._layer_logits_handles.keys()
-        needs_forward = needs_forward or set(layer_names).difference(layers_instrumented) != set()
-        vprint(f"needs_forward because new layer_names")
+        if set(layer_names).difference(layers_instrumented) != set():
+            needs_forward = True
+            vprint(f"needs_forward because new layer_names")
 
     if decoder_layer_names != model._lens_decoder_layer_names:
         vprint(f"needs_forward because new decoder_layer_names")
