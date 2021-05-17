@@ -240,7 +240,7 @@ def _plot_logit_lens(
 
     ax = plt.gca()
     input_tokens_str = _num2tok(input_ids[0].cpu())
-    ax.set_xticklabels(input_tokens_str, rotation=0)
+    ax.set_xticklabels(input_tokens_str[start_ix : end_ix], rotation=0)
 
     if layer_names is None:
         layer_names = ["Layer {}".format(n) for n in range(to_show.shape[0])]
