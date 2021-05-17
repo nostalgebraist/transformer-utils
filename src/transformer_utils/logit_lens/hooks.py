@@ -105,6 +105,8 @@ def make_lens_hooks(
     model._lens_decoder = make_decoder(model, decoder_layer_names)
     model._lens_decoder_layer_names = decoder_layer_names
 
+    model._lens_start_ix, model._lens_end_ix = start_ix, end_ix
+
     def _make_record_logits_hook(name):
         model._layer_logits[name] = None
 

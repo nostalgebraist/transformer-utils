@@ -14,7 +14,7 @@ from .hooks import make_lens_hooks
 from .layer_names import make_layer_names
 
 
-def _needs_forward(model, input_ids, layer_names, decoder_layer_names, verbose=False):
+def _needs_forward(model, input_ids, start_ix, end_ix, layer_names, decoder_layer_names, verbose=False):
     vprint = make_print_if_verbose(verbose)
 
     if not hasattr(model, "_last_input_ids"):
@@ -22,6 +22,10 @@ def _needs_forward(model, input_ids, layer_names, decoder_layer_names, verbose=F
         return True
 
     needs_forward = False
+
+    if model._lens_start_ix != start_ix or model._lens_end_ix != end_ix:
+        vprint(f"needs_forward because new slice")
+        needs_forward = True
 
     if model._last_input_ids is not None:
         if model._last_input_ids.shape == input_ids.shape:
@@ -219,7 +223,7 @@ def plot_logit_lens(
         decoder_layer_names=decoder_layer_names
     )
 
-    needs_forward = _needs_forward(model, input_ids, layer_names, decoder_layer_names, verbose=verbose)
+    needs_forward = _needs_forward(model, input_ids, start_ix, end_ix, layer_names, decoder_layer_names, verbose=verbose)
 
     if verbose:
         print(f"needs_forward?: {needs_forward}")
