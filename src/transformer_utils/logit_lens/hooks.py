@@ -62,11 +62,9 @@ def _get_layer_and_compose_with_ln(model, name):
     if name.endswith('.attn'):
         lname = name[:-len('.attn')] + '.ln_1'
         ln = _get_layer(model, lname)
-        print(f'composing {name} with {lname}')
     elif name.endswith('.mlp'):
         lname = name[:-len('.mlp')] + '.ln_2'
         ln = _get_layer(model, lname)
-        print(f'composing {name} with {lname}')
     else:
         ln = lambda x: x
     return lambda x: _get_layer(model, name)(ln(x))
@@ -83,7 +81,6 @@ def make_decoder(model, decoder_layer_names=['final_layernorm', 'lm_head']):
 
             # TODO: DRY
             is_resid = any([name.endswith(s) for s in _RESID_SUFFIXES])
-            print(f"{name} is_resid: {is_resid}")
             if is_resid:
                 x = x + layer_out
             else:
