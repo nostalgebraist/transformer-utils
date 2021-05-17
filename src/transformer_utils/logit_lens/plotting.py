@@ -178,6 +178,68 @@ def plot_logit_lens(
     decoder_layer_names: list = ['final_layernorm', 'lm_head'],
     verbose=False
 ):
+    """
+    Draws "logit lens" plots, and generalizations thereof.
+
+    For background, see
+        https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens
+        https://jalammar.github.io/hidden-states/
+
+    `model`, `tokenizer` and `input_ids` should be familiar from the transformers library.  Other args are
+     documented below.
+
+    `model` should be a `transformers.PreTrainedModel` with an `lm_head`, e.g. `GPTNeoForCausalLM`.
+
+    Note that using `start_ix` and `end_ix` is not equivalent to passed an `input_ids` sliced like `input_ids[start_ix:end_ix]`.  The LM will see the entire input you pass in as `input_ids`, no matter how you set `start_ix` and `end_ix`.  These "ix" arguments only control what is _displayed_.
+
+    The boolean arguments `probs`, `ranks` and `kl` control the type of plot.  The options are:
+
+        - Logits (the default plot type, if `probs`, `ranks` and `kl` are all False):
+            - cell color: logit assigned by each layer to the final layer's top-1 token prediction
+            - cell text:  top-1 token prediction at each layer
+
+        - Probabilities:
+            - cell color: probability assigned by each layer to the final layer's top-1 token prediction
+            - cell text:  top-1 token prediction at each layer
+
+        - Ranks:
+            - cell color: ranking over the vocab assigned by each layer to the final layer's top-1 token prediction
+            - cell text:  same as cell color
+
+        - KL:
+            - cell color: KL divergence of each layer's probability distribtion w/r/t the final layer's
+            - cell text:  same as cell color
+
+    `include_subblocks` and `decoder_layer_names` allow the creation of plots that go beyond what was done
+    in the original blog post.  See below for details
+
+    Arguments:
+
+        probs:
+            draw a "Probabilities" plot
+        ranks:
+            draw a "Ranks" plot (overrides `probs`)
+        kl:
+            draw a "KL" plot (overrides `probs`, `ranks`)
+        block_step:
+            stride when choosing blocks to plot, e.g. block_step=2 skips every other block
+        include_input:
+            whether to treat the input embeddings (before any blocks have been applied) as a "layer"
+        force_include_output:
+            whether to include the final layer in the plot, even if the passed `block_step` would otherwise skip it
+        include_subblocks:
+            if True, includes predictions after the only the attention part of each block, along with those after the
+            full block
+        decoder_layer_names:
+            defines the subset of the model used to "decode" hidden states.
+
+            The default value `['final_layernorm', 'lm_head']` corresponds to the ordinary "logit lens," where
+            we decode each layer's output as though it were the output of the final block.
+
+            Prepending one or more of the last layers of the model, e.g. `['h11', 'final_layernorm', 'lm_head']`
+            for a 12-layer model, will treat these layers as part of the decoder.  In the general case, this is equivalent
+            to dropping different subsets of interior layers and watching how the output varies.
+    """
     layer_names = make_layer_names(
         model,
         block_step=block_step,
