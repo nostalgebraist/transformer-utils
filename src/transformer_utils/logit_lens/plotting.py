@@ -182,6 +182,7 @@ def plot_logit_lens(
     include_input=True,
     force_include_output=True,
     include_subblocks=False,
+    decoder_layer_names: list = ['final_layernorm', 'lm_head'],
     verbose=False
 ):
     layer_names = make_layer_names(
@@ -192,7 +193,9 @@ def plot_logit_lens(
         include_subblocks=include_subblocks,
     )
 
-    make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, layer_names=layer_names, verbose=verbose)
+    make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, layer_names=layer_names,
+                    decoder_layer_names=decoder_layer_names,
+                    verbose=verbose)
 
     layer_logits, layer_names = collect_logits(
         model, input_ids, layer_names=layer_names
