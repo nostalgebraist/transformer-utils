@@ -182,6 +182,19 @@ def num2tok(x, tokenizer, quotemark=""):
     return quotemark + str(tokenizer.decode([x])) + quotemark
 
 
+def clipmin(x, clip):
+    return np.clip(x, a_min=clip, a_max=None)
+
+
+def kl_summand(p, q, clip=1e-16):
+    p, q = clipmin(p, clip), clipmin(q, clip)
+    return p*np.log(p/q)
+
+
+def kl_div(p, q, axis=-1, clip=1e-16):
+  return np.sum(kl_summand(p, q, clip=clip), axis=axis)
+
+
 def _plot_logit_lens(
     layer_logits,
     layer_preds,
@@ -191,32 +204,58 @@ def _plot_logit_lens(
     start_ix,
     probs=False,
     ranks=False,
+    kl=False,
+    show_text_with_kl=False,
     layer_names=None,
 ):
     end_ix = start_ix + layer_logits.shape[1]
 
     final_preds = layer_preds[-1]
 
-    numeric_input = layer_probs if probs else layer_logits
+    aligned_preds = layer_preds
 
-    to_show = get_value_at_preds(numeric_input, final_preds)
+    if kl:
+        clip = 1/(10 * layer_probs.shape[-1])
+        final_probs = layer_probs[-1]
+        to_show = kl_div(final_probs, layer_probs, clip=clip)
 
-    if ranks:
-        to_show = (numeric_input >= to_show[:, :, np.newaxis]).sum(axis=-1)
+        if show_text_with_kl:
+            summand = kl_summand(final_probs, layer_probs, clip=clip)
+            aligned_preds = summand.argmax(axis=-1)
+            aligned_preds[-1, :] = layer_preds[-1, :]
+    else:
+        numeric_input = layer_probs if probs else layer_logits
 
-    to_show = to_show[::-1]
+        to_show = get_value_at_preds(numeric_input, final_preds)
 
-    aligned_preds = layer_preds[::-1]
+        if ranks:
+            to_show = (numeric_input >= to_show[:, :, np.newaxis]).sum(axis=-1)
 
     _num2tok = np.vectorize(
         partial(num2tok, tokenizer=tokenizer, quotemark="'"), otypes=[str]
     )
     aligned_texts = _num2tok(aligned_preds)
 
+    to_show = to_show[::-1]
+
+    aligned_texts = aligned_texts[::-1]
+
     fig = plt.figure(figsize=(1.5 * to_show.shape[1], 0.375 * to_show.shape[0]))
 
     plot_kwargs = {"annot": aligned_texts, "fmt": ""}
-    if ranks:
+    if kl:
+        vmin, vmax = None, None
+
+        plot_kwargs.update(
+            {
+                "cmap": "cet_linear_protanopic_deuteranopic_kbw_5_98_c40_r",
+                "vmin": vmin,
+                "vmax": vmax,
+                "annot": aligned_texts if show_text_with_kl else True,
+                "fmt": ".1f"
+            }
+        )
+    elif ranks:
         vmax = 2000
         plot_kwargs.update(
             {
