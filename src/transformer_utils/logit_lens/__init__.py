@@ -215,27 +215,35 @@ def _plot_logit_lens(
 
     fig = plt.figure(figsize=(1.5 * to_show.shape[1], 10))
 
+    plot_kwargs = {"annot": aligned_texts, "fmt": ""}
     if ranks:
-        vmin, vmax = 1, 100
-        cmap = "Blues"
-        norm = mpl.colors.LogNorm()
+        plot_kwargs.update(
+            {
+                "cmap": "Blues",
+                "norm": mpl.colors.LogNorm(vmin=1, vmax=100),
+                "annot": True,
+            }
+        )
     elif probs:
-        vmin, vmax = 0, 1
-        cmap = "Blues_r"
-        norm = None
+        plot_kwargs.update(
+            {
+                "cmap": "Blues_r",
+                "vmin": 0,
+                "vmax": 1
+            }
+        )
     else:
-        vmin, vmax = 0, layer_logits[-1, :].max()
-        cmap = "cet_linear_protanopic_deuteranopic_kbw_5_98_c40"
-        norm = None
+        plot_kwargs.update(
+            {
+                "cmap": "cet_linear_protanopic_deuteranopic_kbw_5_98_c40",
+                "vmin": 0,
+                "vmax": layer_logits[-1, :].max(),
+            }
+        )
 
     sns.heatmap(
         to_show,
-        cmap=cmap,
-        vmin=vmin,
-        vmax=vmax,
-        norm=norm,
-        annot=True if ranks else aligned_texts,
-        fmt="",
+        **plot_kwargs
     )
 
     ax = plt.gca()
@@ -260,7 +268,6 @@ def _plot_logit_lens(
         )
     ]
     ax_top.set_xticklabels(starred, rotation=0)
-
 
 def plot_logit_lens(
     model,
