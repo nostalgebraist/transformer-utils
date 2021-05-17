@@ -9,11 +9,12 @@ import matplotlib.pyplot as plt
 import colorcet  # noqa
 
 from .hooks import make_lens_hooks
-from .layer_names import make_layer_names, clear_lens_hooks
+from .layer_names import make_layer_names
 
 
-def collect_logits(model, input_ids, layer_names, decoder_layer_names):
+def _needs_forward(model, input_ids, layer_names, decoder_layer_names):
     needs_forward = True
+
     if model._last_input_ids is not None:
         if model._last_input_ids.shape == input_ids.shape:
             needs_forward = not (model._last_input_ids == input_ids).cpu().all()
@@ -26,10 +27,13 @@ def collect_logits(model, input_ids, layer_names, decoder_layer_names):
 
     needs_forward = needs_forward or decoder_layer_names != model._lens_decoder_layer_names
 
+    return needs_forward
+
+
+def collect_logits(model, input_ids, layer_names, decoder_layer_names, needs_forward):
     model._last_resid = None
 
     if needs_forward:
-        clear_lens_hooks(model)
         with torch.no_grad():
             out = model(input_ids)
         del out
@@ -200,12 +204,16 @@ def plot_logit_lens(
         decoder_layer_names=decoder_layer_names
     )
 
-    make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, layer_names=layer_names,
-                    decoder_layer_names=decoder_layer_names,
-                    verbose=verbose)
+    needs_forward = _needs_forward(model, input_ids, layer_names, decoder_layer_names)
+
+    if needs_forward:
+        make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, layer_names=layer_names,
+                        decoder_layer_names=decoder_layer_names,
+                        verbose=verbose)
 
     layer_logits, layer_names = collect_logits(
-        model, input_ids, layer_names=layer_names, decoder_layer_names=decoder_layer_names
+        model, input_ids, layer_names=layer_names, decoder_layer_names=decoder_layer_names,
+        needs_forward=needs_forward
     )
 
     layer_preds, layer_probs = postprocess_logits(layer_logits)

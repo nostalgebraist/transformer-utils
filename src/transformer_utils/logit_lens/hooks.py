@@ -78,6 +78,8 @@ def make_lens_hooks(
 ):
     vprint = make_print_if_verbose(verbose)
 
+    clear_lens_hooks(model)
+
     _RESID_SUFFIXES = {".attn", ".mlp"}
 
     def _opt_slice(x, start_ix, end_ix):
