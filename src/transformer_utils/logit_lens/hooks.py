@@ -5,13 +5,28 @@ from ..util.python_utils import make_print_if_verbose
 from ..util.module_utils import get_child_module_by_names
 
 
+def blocks_input_locator(model: nn.Module):
+    """
+    HF usually (always?) places a dropout after the input embeddings.
+    TODO: avoid depending on this
+    """
+    dropouts_on_base_model = [
+        mod for mod in model.base_model.children()
+        if isinstance(mod, nn.Dropout)
+    ]
+    if len(dropouts_on_base_model) > 0:
+        return lambda: dropouts_on_base_model[0]
+    raise ValueError('could not identify blocks input')
+
+
 def final_layernorm_locator(model: nn.Module):
-    # TODO: more principled way?
-    names = ["ln_f", "layernorm"]
-    for name in names:
-        if hasattr(model.base_model, name):
-            return lambda: getattr(model.base_model, name)
-    return lambda: lambda x: x
+    layernorms_on_base_model = [
+        mod for mod in model.base_model.children()
+        if isinstance(mod, nn.LayerNorm)
+    ]
+    if len(layernorms_on_base_model) > 0:
+        return lambda: layernorms_on_base_model[0]
+    raise ValueError('could not identify ln_f')
 
 
 def make_lens_hooks(
@@ -50,25 +65,22 @@ def make_lens_hooks(
         model._last_input_ids = None
         model._last_input_ids_handle = None
 
+    if not hasattr(model, "_blocks_input_getter"):
+        model._blocks_input_getter = blocks_input_locator(model)
+
     if not hasattr(model, "_ln_f_getter"):
         model._ln_f_getter = final_layernorm_locator(model)
 
-    if not hasattr(model, "_ln_base"):
-        # TODO: use
-        model._ln_base = (
-            nn.LayerNorm(model.config.hidden_size)
-            .to(model.device)
-            .requires_grad_(False)
-        )
-
     if layer_names is None:
         h = get_child_module_by_names(model.base_model, prefixes + ["h"])
-        layer_names = [f"h.{i}" for i in range(len(h))]
+        layer_names = ["input"] + [f"h.{i}" for i in range(len(h))]
 
     # TODO: better naming
     model._ordered_layer_names = layer_names
 
     def _get_layer(name):
+        if name == "input":
+            return model._blocks_input_getter()
         return get_child_module_by_names(model.base_model, prefixes + name.split("."))
 
     def _make_record_logits_hook(name):
