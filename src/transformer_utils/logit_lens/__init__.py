@@ -17,8 +17,8 @@ def final_layernorm_locator(model: nn.Module):
     # TODO: more principled way?
     names = ["ln_f", "layernorm"]
     for name in names:
-        if hasattr(model.transformer, name):
-            return lambda: getattr(model.transformer, name)
+        if hasattr(model, name):
+            return lambda: getattr(model, name)
     return lambda: lambda x: x
 
 
@@ -124,7 +124,7 @@ def make_lens_hooks(
         model._layer_logits_handles[name] = handle
 
     if model._last_input_ids_handle is None:
-        handle = model.transformer.get_input_embeddings().register_forward_hook(
+        handle = model.get_input_embeddings().register_forward_hook(
             _record_input_ids_hook
         )
         model._last_input_ids_handle = handle
