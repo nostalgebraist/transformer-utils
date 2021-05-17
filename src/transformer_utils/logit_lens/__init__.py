@@ -43,7 +43,7 @@ def make_lens_hooks(
         except:
             return x
 
-    def _opt_slice(x, start_ix, end_ix):
+    def _opt_slice(x):
         if not start_ix:
             start_ix = 0
         if not end_ix:
