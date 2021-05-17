@@ -83,6 +83,7 @@ def make_decoder(model, decoder_layer_names=['final_layernorm', 'lm_head']):
 
             # TODO: DRY
             is_resid = any([name.endswith(s) for s in _RESID_SUFFIXES])
+            print(f"{name} is_resid: {is_resid}")
             if is_resid:
                 x = x + layer_out
             else:
