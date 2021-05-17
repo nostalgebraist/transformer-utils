@@ -42,7 +42,9 @@ def _get_layer(model, name):
         return model._blocks_input_getter()
     if name == "final_layernorm":
         return model._ln_f_getter()
-    return get_child_module_by_names(model.base_model, name.split("."))
+
+    model_with_module = model if name == "lm_head" else model.base_model
+    return get_child_module_by_names(model_with_module, name.split("."))
 
 
 def _sqz(x):
