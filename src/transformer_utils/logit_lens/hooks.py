@@ -58,10 +58,20 @@ def _sqz(x):
         return x
 
 
+def _get_layer_and_compose_with_ln(model, name):
+    if name.endswith('.attn'):
+        ln = _get_layer(model, name[:-len('.attn')] + '.ln_1')
+    elif name.endswith('.mlp'):
+        ln = _get_layer(model, name[:-len('.attn')] + '.ln_2')
+    else:
+        ln = lambda x: x
+    return lambda x: _get_layer(model, name)(ln(x))
+
+
 def make_decoder(model, decoder_layer_names=['final_layernorm', 'lm_head']):
     _locate_special_modules(model)
 
-    decoder_layers = [_get_layer(model, name) for name in decoder_layer_names]
+    decoder_layers = [_get_layer_and_compose_with_ln(model, name) for name in decoder_layer_names]
 
     def _decoder(x):
         for name, layer in zip(decoder_layer_names, decoder_layers):
