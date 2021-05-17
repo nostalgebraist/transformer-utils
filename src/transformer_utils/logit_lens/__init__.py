@@ -78,7 +78,7 @@ def make_lens_hooks(
             else:
                 decoder_in = _sqz(output)
 
-            model._layer_logits[name] = model.lm_head(ln_f(extra_call_before_decoder(decoder_in)))
+            model._layer_logits[name] = model.lm_head(ln_f(extra_call_before_decoder(decoder_in))).cpu().numpy()
             model._last_resid = decoder_in
 
         return _record_logits_hook
@@ -138,12 +138,17 @@ def collect_logits(model, input_ids, layer_names=None):
     if layer_names is None:
         layer_names = sorted([str(k) for k in model._layer_logits.keys()])
 
-    layer_logits = torch.cat(
+    layer_logits = np.concatenate(
         [model._layer_logits[name] for name in layer_names],
-        dim=0,
+        axis=0,
     )
 
-    layer_logits = layer_logits.cpu().numpy()
+    # layer_logits = torch.cat(
+    #     [model._layer_logits[name] for name in layer_names],
+    #     dim=0,
+    # )
+
+    # layer_logits = layer_logits.cpu().numpy()
 
     return layer_logits
 
