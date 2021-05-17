@@ -29,7 +29,7 @@ def make_lens_hooks(
     verbose=True,
     extra_call_before_decoder=lambda x: x,
     start_ix=None,
-    end_ix=None
+    end_ix=None,
 ):
     vprint = make_print_if_verbose(verbose)
 
@@ -225,13 +225,7 @@ def _plot_logit_lens(
             }
         )
     elif probs:
-        plot_kwargs.update(
-            {
-                "cmap": "Blues_r",
-                "vmin": 0,
-                "vmax": 1
-            }
-        )
+        plot_kwargs.update({"cmap": "Blues_r", "vmin": 0, "vmax": 1})
     else:
         plot_kwargs.update(
             {
@@ -241,14 +235,11 @@ def _plot_logit_lens(
             }
         )
 
-    sns.heatmap(
-        to_show,
-        **plot_kwargs
-    )
+    sns.heatmap(to_show, **plot_kwargs)
 
     ax = plt.gca()
     input_tokens_str = _num2tok(input_ids[0].cpu())
-    ax.set_xticklabels(input_tokens_str[start_ix : end_ix], rotation=0)
+    ax.set_xticklabels(input_tokens_str[start_ix:end_ix], rotation=0)
 
     if layer_names is None:
         layer_names = ["Layer {}".format(n) for n in range(to_show.shape[0])]
@@ -269,6 +260,7 @@ def _plot_logit_lens(
     ]
     ax_top.set_xticklabels(starred, rotation=0)
 
+
 def plot_logit_lens(
     model,
     tokenizer,
@@ -281,7 +273,9 @@ def plot_logit_lens(
 ):
     make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, verbose=False)
 
-    layer_logits, layer_names = collect_logits(model, input_ids, layer_names=layer_names)
+    layer_logits, layer_names = collect_logits(
+        model, input_ids, layer_names=layer_names
+    )
 
     layer_preds, layer_probs = postprocess_logits(layer_logits)
 
