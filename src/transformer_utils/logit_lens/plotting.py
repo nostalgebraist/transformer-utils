@@ -14,48 +14,13 @@ from .hooks import make_lens_hooks
 from .layer_names import make_layer_names
 
 
-def _needs_forward(model, input_ids, start_ix, end_ix, layer_names, decoder_layer_names, verbose=False):
-    vprint = make_print_if_verbose(verbose)
-
-    if not hasattr(model, "_last_input_ids"):
-        vprint(f"needs_forward because not instrumented")
-        return True
-
-    needs_forward = False
-
-    if model._lens_start_ix != start_ix or model._lens_end_ix != end_ix:
-        vprint(f"needs_forward because new slice")
-        needs_forward = True
-
-    if model._last_input_ids is not None:
-        if model._last_input_ids.shape == input_ids.shape:
-            if not (model._last_input_ids == input_ids).cpu().all():
-                vprint(f"needs_forward because new input ids")
-                needs_forward = True
-
-    if layer_names is None:
-        layer_names = model._ordered_layer_names
-    else:
-        layers_instrumented = model._layer_logits_handles.keys()
-        if set(layer_names).difference(layers_instrumented) != set():
-            needs_forward = True
-            vprint(f"needs_forward because new layer_names")
-
-    if decoder_layer_names != model._lens_decoder_layer_names:
-        vprint(f"needs_forward because new decoder_layer_names")
-        needs_forward = True
-
-    return needs_forward
-
-
-def collect_logits(model, input_ids, layer_names, decoder_layer_names, needs_forward):
+def collect_logits(model, input_ids, layer_names, decoder_layer_names):
     model._last_resid = None
 
-    if needs_forward:
-        with torch.no_grad():
-            out = model(input_ids)
-        del out
-        model._last_resid = None
+    with torch.no_grad():
+        out = model(input_ids)
+    del out
+    model._last_resid = None
 
     layer_logits = np.concatenate(
         [model._layer_logits[name] for name in layer_names],
@@ -222,19 +187,12 @@ def plot_logit_lens(
         decoder_layer_names=decoder_layer_names
     )
 
-    needs_forward = _needs_forward(model, input_ids, start_ix, end_ix, layer_names, decoder_layer_names, verbose=verbose)
-
-    if verbose:
-        print(f"needs_forward?: {needs_forward}")
-
-    if needs_forward:
-        make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, layer_names=layer_names,
-                        decoder_layer_names=decoder_layer_names,
-                        verbose=verbose)
+    make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, layer_names=layer_names,
+                    decoder_layer_names=decoder_layer_names,
+                    verbose=verbose)
 
     layer_logits, layer_names = collect_logits(
         model, input_ids, layer_names=layer_names, decoder_layer_names=decoder_layer_names,
-        needs_forward=needs_forward
     )
 
     layer_preds, layer_probs = postprocess_logits(layer_logits)

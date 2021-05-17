@@ -95,17 +95,10 @@ def make_lens_hooks(
         if not hasattr(model, attr):
             setattr(model, attr, {})
 
-    if not hasattr(model, "_last_input_ids"):
-        model._last_input_ids = None
-        model._last_input_ids_handle = None
-
     # TODO: better naming
     model._ordered_layer_names = layer_names
 
     model._lens_decoder = make_decoder(model, decoder_layer_names)
-    model._lens_decoder_layer_names = decoder_layer_names
-
-    model._lens_start_ix, model._lens_end_ix = start_ix, end_ix
 
     def _make_record_logits_hook(name):
         model._layer_logits[name] = None
@@ -129,9 +122,6 @@ def make_lens_hooks(
 
         return _record_logits_hook
 
-    def _record_input_ids_hook(module, input, output):
-        model._last_input_ids = input[0]
-
     def _hook_already_there(name):
         handle = model._layer_logits_handles.get(name)
         if not handle:
@@ -147,12 +137,6 @@ def make_lens_hooks(
         handle = layer.register_forward_hook(_make_record_logits_hook(name))
         model._layer_logits_handles[name] = handle
 
-    if model._last_input_ids_handle is None:
-        handle = model.base_model.get_input_embeddings().register_forward_hook(
-            _record_input_ids_hook
-        )
-        model._last_input_ids_handle = handle
-
 
 def clear_lens_hooks(model):
     if hasattr(model, "_layer_logits_handles"):
@@ -162,6 +146,3 @@ def clear_lens_hooks(model):
         ks = list(model._layer_logits_handles.keys())
         for k in ks:
             del model._layer_logits_handles[k]
-
-    if hasattr(model, "_last_input_ids"):
-        model._last_input_ids = None
