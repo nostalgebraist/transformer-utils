@@ -23,8 +23,11 @@ def final_layernorm_locator(model: nn.Module):
 
 
 def make_lens_hooks(
-    model, layer_names: list = None, prefixes: list = ["transformer"], verbose=True,
-    extra_call_before_decoder=lambda x: x
+    model,
+    layer_names: list = None,
+    prefixes: list = ["transformer"],
+    verbose=True,
+    extra_call_before_decoder=lambda x: x,
 ):
     vprint = make_print_if_verbose(verbose)
 
@@ -58,7 +61,7 @@ def make_lens_hooks(
         )
 
     if layer_names is None:
-        h = get_child_module_by_names(model, prefixes + ['h'])
+        h = get_child_module_by_names(model, prefixes + ["h"])
         layer_names = [f"h.{i}" for i in range(len(h))]
 
     def _get_layer(name):
@@ -78,7 +81,9 @@ def make_lens_hooks(
             else:
                 decoder_in = _sqz(output)
 
-            model._layer_logits[name] = model.lm_head(ln_f(extra_call_before_decoder(decoder_in))).cpu().numpy()
+            model._layer_logits[name] = (
+                model.lm_head(ln_f(extra_call_before_decoder(decoder_in))).cpu().numpy()
+            )
             model._last_resid = decoder_in
 
         return _record_logits_hook
