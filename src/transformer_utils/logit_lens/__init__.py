@@ -213,7 +213,7 @@ def _plot_logit_lens(
     )
     aligned_texts = _num2tok(aligned_preds)
 
-    fig = plt.figure(figsize=(1.5 * to_show.shape[1], 0.25 * to_show.shape[0]))
+    fig = plt.figure(figsize=(1.5 * to_show.shape[1], 0.375 * to_show.shape[0]))
 
     plot_kwargs = {"annot": aligned_texts, "fmt": ""}
     if ranks:
@@ -227,11 +227,15 @@ def _plot_logit_lens(
     elif probs:
         plot_kwargs.update({"cmap": "Blues_r", "vmin": 0, "vmax": 1})
     else:
+        vmax = max(
+            layer_logits[-1, :].max(),  # highest value in the final output
+            np.percentile(to_show.reshape(-1), 90),  # 90th %ile over the whole matrix
+        )
         plot_kwargs.update(
             {
                 "cmap": "cet_linear_protanopic_deuteranopic_kbw_5_98_c40",
                 "vmin": 0,
-                "vmax": layer_logits[-1, :].max(),
+                "vmax": vmax,
             }
         )
 
