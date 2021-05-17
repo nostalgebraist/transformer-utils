@@ -4,6 +4,8 @@ import torch.nn as nn
 from ..util.python_utils import make_print_if_verbose
 from ..util.module_utils import get_child_module_by_names
 
+_RESID_SUFFIXES = {".attn", ".mlp"}
+
 
 def blocks_input_locator(model: nn.Module):
     """
@@ -62,8 +64,15 @@ def make_decoder(model, decoder_layer_names=['final_layernorm', 'lm_head']):
     decoder_layers = [_get_layer(model, name) for name in decoder_layer_names]
 
     def _decoder(x):
-        for layer in decoder_layers:
-            x = _sqz(layer(_sqz(x)))
+        for name, layer in zip(decoder_layer_names, decoder_layers):
+            layer_out = _sqz(layer(_sqz(x)))
+
+            # TODO: DRY
+            is_resid = any([name.endswith(s) for s in _RESID_SUFFIXES])
+            if is_resid:
+                x = x + layer_out
+            else:
+                x = layer_out
         return x
     return _decoder
 
@@ -79,8 +88,6 @@ def make_lens_hooks(
     vprint = make_print_if_verbose(verbose)
 
     clear_lens_hooks(model)
-
-    _RESID_SUFFIXES = {".attn", ".mlp"}
 
     def _opt_slice(x, start_ix, end_ix):
         if not start_ix:
