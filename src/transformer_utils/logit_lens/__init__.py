@@ -73,6 +73,9 @@ def make_lens_hooks(
         h = get_child_module_by_names(model, prefixes + ["h"])
         layer_names = [f"h.{i}" for i in range(len(h))]
 
+    # TODO: better naming
+    model._ordered_layer_names = layer_names
+
     def _get_layer(name):
         return get_child_module_by_names(model, prefixes + name.split("."))
 
@@ -153,21 +156,14 @@ def collect_logits(model, input_ids, layer_names=None):
         model._last_resid = None
 
     if layer_names is None:
-        layer_names = sorted([str(k) for k in model._layer_logits.keys()])
+        layer_names = model._ordered_layer_names
 
     layer_logits = np.concatenate(
         [model._layer_logits[name] for name in layer_names],
         axis=0,
     )
 
-    # layer_logits = torch.cat(
-    #     [model._layer_logits[name] for name in layer_names],
-    #     dim=0,
-    # )
-
-    # layer_logits = layer_logits.cpu().numpy()
-
-    return layer_logits
+    return layer_logits, layer_names
 
 
 def postprocess_logits(layer_logits):
@@ -278,7 +274,7 @@ def plot_logit_lens(
 ):
     make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, verbose=False)
 
-    layer_logits = collect_logits(model, input_ids)
+    layer_logits, layer_names = collect_logits(model, input_ids, layer_names=layer_names)
 
     layer_preds, layer_probs = postprocess_logits(layer_logits)
 
