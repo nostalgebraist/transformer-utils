@@ -17,6 +17,10 @@ from .layer_names import make_layer_names
 def _needs_forward(model, input_ids, layer_names, decoder_layer_names, verbose=False):
     vprint = make_print_if_verbose(verbose)
 
+    if not hasattr(model, "_last_input_ids"):
+        vprint(f"needs_forward because not instrumented")
+        return True
+
     needs_forward = True
 
     if model._last_input_ids is not None:
