@@ -29,7 +29,6 @@ def _needs_forward(model, input_ids, start_ix, end_ix, layer_names, decoder_laye
 
     if model._last_input_ids is not None:
         if model._last_input_ids.shape == input_ids.shape:
-            needs_forward = not (model._last_input_ids == input_ids).cpu().all()
             if not (model._last_input_ids == input_ids).cpu().all():
                 vprint(f"needs_forward because new input ids")
                 needs_forward = True
