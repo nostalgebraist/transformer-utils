@@ -188,11 +188,11 @@ def clipmin(x, clip):
 
 def kl_summand(p, q, clip=1e-16):
     p, q = clipmin(p, clip), clipmin(q, clip)
-    return p*np.log(p/q)
+    return p * np.log(p / q)
 
 
 def kl_div(p, q, axis=-1, clip=1e-16):
-  return np.sum(kl_summand(p, q, clip=clip), axis=axis)
+    return np.sum(kl_summand(p, q, clip=clip), axis=axis)
 
 
 def _plot_logit_lens(
@@ -215,7 +215,7 @@ def _plot_logit_lens(
     aligned_preds = layer_preds
 
     if kl:
-        clip = 1/(10 * layer_probs.shape[-1])
+        clip = 1 / (10 * layer_probs.shape[-1])
         final_probs = layer_probs[-1]
         to_show = kl_div(final_probs, layer_probs, clip=clip)
 
@@ -252,7 +252,7 @@ def _plot_logit_lens(
                 "vmin": vmin,
                 "vmax": vmax,
                 "annot": aligned_texts if show_text_with_kl else True,
-                "fmt": ".1f"
+                "fmt": ".1f",
             }
         )
     elif ranks:
