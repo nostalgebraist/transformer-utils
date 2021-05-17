@@ -213,7 +213,7 @@ def _plot_logit_lens(
     )
     aligned_texts = _num2tok(aligned_preds)
 
-    fig = plt.figure(figsize=(1.5 * to_show.shape[1], 10))
+    fig = plt.figure(figsize=(1.5 * to_show.shape[1], 0.25 * to_show.shape[0]))
 
     plot_kwargs = {"annot": aligned_texts, "fmt": ""}
     if ranks:
