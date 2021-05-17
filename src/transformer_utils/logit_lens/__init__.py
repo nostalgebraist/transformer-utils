@@ -17,8 +17,8 @@ def final_layernorm_locator(model: nn.Module):
     # TODO: more principled way?
     names = ["ln_f", "layernorm"]
     for name in names:
-        if hasattr(model, name):
-            return lambda: getattr(model, name)
+        if hasattr(model.base_model, name):
+            return lambda: getattr(model.base_model, name)
     return lambda: lambda x: x
 
 
@@ -32,8 +32,6 @@ def make_lens_hooks(
     end_ix=None,
 ):
     vprint = make_print_if_verbose(verbose)
-
-    model = model.base_model
 
     _RESID_SUFFIXES = {".attn", ".mlp"}
 
@@ -72,14 +70,14 @@ def make_lens_hooks(
         )
 
     if layer_names is None:
-        h = get_child_module_by_names(model, prefixes + ["h"])
+        h = get_child_module_by_names(model.base_model, prefixes + ["h"])
         layer_names = [f"h.{i}" for i in range(len(h))]
 
     # TODO: better naming
     model._ordered_layer_names = layer_names
 
     def _get_layer(name):
-        return get_child_module_by_names(model, prefixes + name.split("."))
+        return get_child_module_by_names(model.base_model, prefixes + name.split("."))
 
     def _make_record_logits_hook(name):
         model._layer_logits[name] = None
@@ -124,7 +122,7 @@ def make_lens_hooks(
         model._layer_logits_handles[name] = handle
 
     if model._last_input_ids_handle is None:
-        handle = model.get_input_embeddings().register_forward_hook(
+        handle = model.base_model.get_input_embeddings().register_forward_hook(
             _record_input_ids_hook
         )
         model._last_input_ids_handle = handle
