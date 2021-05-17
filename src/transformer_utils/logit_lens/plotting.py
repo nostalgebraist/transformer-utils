@@ -8,24 +8,32 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import colorcet  # noqa
 
+from ..util.python_utils import make_print_if_verbose
+
 from .hooks import make_lens_hooks
 from .layer_names import make_layer_names
 
 
-def _needs_forward(model, input_ids, layer_names, decoder_layer_names):
+def _needs_forward(model, input_ids, layer_names, decoder_layer_names, verbose=False):
+    vprint = make_print_if_verbose(verbose)
+
     needs_forward = True
 
     if model._last_input_ids is not None:
         if model._last_input_ids.shape == input_ids.shape:
             needs_forward = not (model._last_input_ids == input_ids).cpu().all()
+            vprint(f"needs_forward because new input ids")
 
     if layer_names is None:
         layer_names = model._ordered_layer_names
     else:
         layers_instrumented = model._layer_logits_handles.keys()
         needs_forward = needs_forward or set(layer_names).difference(layers_instrumented) != set()
+        vprint(f"needs_forward because new layer_names")
 
-    needs_forward = needs_forward or decoder_layer_names != model._lens_decoder_layer_names
+    if decoder_layer_names != model._lens_decoder_layer_names:
+        vprint(f"needs_forward because new decoder_layer_names")
+        needs_forward = True
 
     return needs_forward
 
@@ -204,7 +212,10 @@ def plot_logit_lens(
         decoder_layer_names=decoder_layer_names
     )
 
-    needs_forward = _needs_forward(model, input_ids, layer_names, decoder_layer_names)
+    needs_forward = _needs_forward(model, input_ids, layer_names, decoder_layer_names, verbose=verbose)
+
+    if verbose:
+        print(f"needs_forward?: {needs_forward}")
 
     if needs_forward:
         make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, layer_names=layer_names,
