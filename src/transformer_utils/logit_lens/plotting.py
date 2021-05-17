@@ -12,11 +12,19 @@ from .hooks import make_lens_hooks
 from .layer_names import make_layer_names
 
 
-def collect_logits(model, input_ids, layer_names=None):
+def collect_logits(model, input_ids, layer_names, decoder_layer_names):
     needs_forward = True
     if model._last_input_ids is not None:
         if model._last_input_ids.shape == input_ids.shape:
             needs_forward = not (model._last_input_ids == input_ids).cpu().all()
+
+    if layer_names is None:
+        layer_names = model._ordered_layer_names
+    else:
+        layers_instrumented = model._layer_logits_handles.keys()
+        needs_forward = needs_forward or set(layer_names).difference(layers_instrumented) != set()
+
+    needs_forward = needs_forward or decoder_layer_names != model._lens_decoder_layer_names
 
     model._last_resid = None
 
@@ -25,9 +33,6 @@ def collect_logits(model, input_ids, layer_names=None):
             out = model(input_ids)
         del out
         model._last_resid = None
-
-    if layer_names is None:
-        layer_names = model._ordered_layer_names
 
     layer_logits = np.concatenate(
         [model._layer_logits[name] for name in layer_names],
@@ -199,7 +204,7 @@ def plot_logit_lens(
                     verbose=verbose)
 
     layer_logits, layer_names = collect_logits(
-        model, input_ids, layer_names=layer_names
+        model, input_ids, layer_names=layer_names, decoder_layer_names=decoder_layer_names
     )
 
     layer_preds, layer_probs = postprocess_logits(layer_logits)
