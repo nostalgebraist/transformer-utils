@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import colorcet  # noqa
 
 from .hooks import make_lens_hooks
-from .layer_names import make_layer_names
+from .layer_names import make_layer_names, clear_lens_hooks
 
 
 def collect_logits(model, input_ids, layer_names, decoder_layer_names):
@@ -29,6 +29,7 @@ def collect_logits(model, input_ids, layer_names, decoder_layer_names):
     model._last_resid = None
 
     if needs_forward:
+        clear_lens_hooks(model)
         with torch.no_grad():
             out = model(input_ids)
         del out
