@@ -191,6 +191,7 @@ def plot_logit_lens(
         include_input=include_input,
         force_include_output=force_include_output,
         include_subblocks=include_subblocks,
+        decoder_layer_names=decoder_layer_names
     )
 
     make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, layer_names=layer_names,

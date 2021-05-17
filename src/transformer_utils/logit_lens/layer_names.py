@@ -7,6 +7,7 @@ def make_layer_names(
     include_input=True,
     force_include_output=True,
     include_subblocks=False,
+    decoder_layer_names: list = ['final_layernorm', 'lm_head']
 ):
     h = get_child_module_by_names(model.base_model, ["h"])
     h_names = [f"h.{i}" for i in range(len(h))]
@@ -24,5 +25,7 @@ def make_layer_names(
 
     if include_input:
         names = ["input"] + names
+
+    names = [name for name in names if name not in decoder_layer_names]
 
     return names
