@@ -26,8 +26,11 @@ def make_layer_names(
     if include_input:
         names = ["input"] + names
 
+    def _subset(a, b):
+        return a == b or a.startswith(b + ".")
+
     def _names_overlap(a, b):
-        return a.startswith(b) or b.startswith(a)
+        return _subset(a, b) or _subset(b, a)
 
     names = [name for name in names
              if not any([_names_overlap(name, dname) for dname in decoder_layer_names])
