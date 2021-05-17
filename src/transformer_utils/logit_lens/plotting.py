@@ -182,9 +182,12 @@ def plot_logit_lens(
     end_ix: int,
     probs=False,
     ranks=False,
+    kl=False,
+    show_text_with_kl=False,
     layer_names=None,
+    verbose=False
 ):
-    make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, verbose=False)
+    make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, verbose=verbose)
 
     layer_logits, layer_names = collect_logits(
         model, input_ids, layer_names=layer_names
@@ -201,5 +204,7 @@ def plot_logit_lens(
         start_ix=start_ix,
         probs=probs,
         ranks=ranks,
+        kl=kl,
+        show_text_with_kl=show_text_with_kl,
         layer_names=layer_names,
     )
