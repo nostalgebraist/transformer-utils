@@ -25,13 +25,15 @@ def final_layernorm_locator(model: nn.Module):
 def make_lens_hooks(
     model,
     layer_names: list = None,
-    prefixes: list = ["transformer"],
+    prefixes: list = [],
     verbose=True,
     extra_call_before_decoder=lambda x: x,
     start_ix=None,
     end_ix=None,
 ):
     vprint = make_print_if_verbose(verbose)
+
+    model = model.base_model
 
     _RESID_SUFFIXES = {".attn", ".mlp"}
 
