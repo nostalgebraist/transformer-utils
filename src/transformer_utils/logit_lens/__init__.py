@@ -28,6 +28,8 @@ def make_lens_hooks(
     prefixes: list = ["transformer"],
     verbose=True,
     extra_call_before_decoder=lambda x: x,
+    start_ix=None,
+    end_ix=None
 ):
     vprint = make_print_if_verbose(verbose)
 
@@ -40,6 +42,13 @@ def make_lens_hooks(
             return x[0]
         except:
             return x
+
+    def _opt_slice(x, start_ix, end_ix):
+        if not start_ix:
+            start_ix = 0
+        if not end_ix:
+            end_ix = x.shape[1]
+        return x[:, start_ix:end_ix, :]
 
     for attr in ["_layer_logits", "_layer_logits_handles"]:
         if not hasattr(model, attr):
@@ -81,9 +90,12 @@ def make_lens_hooks(
             else:
                 decoder_in = _sqz(output)
 
-            model._layer_logits[name] = (
-                model.lm_head(ln_f(extra_call_before_decoder(decoder_in))).cpu().numpy()
-            )
+            slice_in = extra_call_before_decoder(decoder_in)
+            sliced = _opt_slice(slice_in)
+
+            decoder_out = model.lm_head(ln_f(sliced))
+
+            model._layer_logits[name] = decoder_out.cpu().numpy()
             model._last_resid = decoder_in
 
         return _record_logits_hook
@@ -180,12 +192,13 @@ def _plot_logit_lens(
     layer_probs,
     tokenizer,
     input_ids,
-    start_ix: int,
-    end_ix: int,
+    start_ix,
     probs=False,
     ranks=False,
     layer_names=None,
 ):
+    end_ix = start_ix + layer_logits.shape[1]
+
     final_preds = layer_preds[-1]
 
     numeric_input = layer_probs if probs else layer_logits
@@ -195,9 +208,9 @@ def _plot_logit_lens(
     if ranks:
         to_show = (numeric_input >= to_show[:, :, np.newaxis]).sum(axis=-1)
 
-    to_show = to_show[:, start_ix:end_ix][::-1]
+    to_show = to_show[::-1]
 
-    aligned_preds = layer_preds[:, start_ix:end_ix][::-1]
+    aligned_preds = layer_preds[::-1]
 
     _num2tok = np.vectorize(
         partial(num2tok, tokenizer=tokenizer, quotemark="'"), otypes=[str]
@@ -215,7 +228,7 @@ def _plot_logit_lens(
         cmap = "Blues_r"
         norm = None
     else:
-        vmin, vmax = 0, layer_logits[-1, start_ix:end_ix].max()
+        vmin, vmax = 0, layer_logits[-1, :].max()
         cmap = "cet_linear_protanopic_deuteranopic_kbw_5_98_c40"
         norm = None
 
@@ -231,7 +244,7 @@ def _plot_logit_lens(
 
     ax = plt.gca()
     input_tokens_str = _num2tok(input_ids[0].cpu())
-    ax.set_xticklabels(input_tokens_str[start_ix:end_ix], rotation=0)
+    ax.set_xticklabels(input_tokens_str, rotation=0)
 
     if layer_names is None:
         layer_names = ["Layer {}".format(n) for n in range(to_show.shape[0])]
@@ -241,8 +254,8 @@ def _plot_logit_lens(
     tick_locs = ax.get_xticks()
 
     ax_top = ax.twiny()
-    padw = 0.5 / (end_ix - start_ix)
-    ax_top.set_xticks(np.linspace(padw, 1 - padw, end_ix - start_ix))
+    padw = 0.5 / to_show.shape[1]
+    ax_top.set_xticks(np.linspace(padw, 1 - padw, to_show.shape[1]))
 
     starred = [
         "* " + true if pred == true else " " + true
@@ -263,7 +276,7 @@ def plot_logit_lens(
     ranks=False,
     layer_names=None,
 ):
-    make_lens_hooks(model, verbose=False)
+    make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, verbose=False)
 
     layer_logits = collect_logits(model, input_ids)
 
@@ -276,7 +289,6 @@ def plot_logit_lens(
         tokenizer=tokenizer,
         input_ids=input_ids,
         start_ix=start_ix,
-        end_ix=end_ix,
         probs=probs,
         ranks=ranks,
         layer_names=layer_names,
