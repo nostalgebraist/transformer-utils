@@ -31,8 +31,7 @@ def final_layernorm_locator(model: nn.Module):
 
 def make_lens_hooks(
     model,
-    layer_names: list = None,
-    prefixes: list = [],
+    layer_names: list,
     verbose=True,
     extra_call_before_decoder=lambda x: x,
     start_ix=None,
@@ -71,17 +70,13 @@ def make_lens_hooks(
     if not hasattr(model, "_ln_f_getter"):
         model._ln_f_getter = final_layernorm_locator(model)
 
-    if layer_names is None:
-        h = get_child_module_by_names(model.base_model, prefixes + ["h"])
-        layer_names = ["input"] + [f"h.{i}" for i in range(len(h))]
-
     # TODO: better naming
     model._ordered_layer_names = layer_names
 
     def _get_layer(name):
         if name == "input":
             return model._blocks_input_getter()
-        return get_child_module_by_names(model.base_model, prefixes + name.split("."))
+        return get_child_module_by_names(model.base_model, name.split("."))
 
     def _make_record_logits_hook(name):
         model._layer_logits[name] = None

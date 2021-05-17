@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import colorcet  # noqa
 
 from .hooks import make_lens_hooks
+from .layer_names import make_layer_names
 
 
 def collect_logits(model, input_ids, layer_names=None):
@@ -72,11 +73,10 @@ def _plot_logit_lens(
     tokenizer,
     input_ids,
     start_ix,
+    layer_names,
     probs=False,
     ranks=False,
     kl=False,
-    show_text_with_kl=False,
-    layer_names=None,
 ):
     end_ix = start_ix + layer_logits.shape[1]
 
@@ -88,11 +88,6 @@ def _plot_logit_lens(
         clip = 1 / (10 * layer_probs.shape[-1])
         final_probs = layer_probs[-1]
         to_show = kl_div(final_probs, layer_probs, clip=clip)
-
-        if show_text_with_kl:
-            summand = kl_summand(final_probs, layer_probs, clip=clip)
-            aligned_preds = summand.argmax(axis=-1)
-            aligned_preds[-1, :] = layer_preds[-1, :]
     else:
         numeric_input = layer_probs if probs else layer_logits
 
@@ -121,7 +116,7 @@ def _plot_logit_lens(
                 "cmap": "cet_linear_protanopic_deuteranopic_kbw_5_98_c40_r",
                 "vmin": vmin,
                 "vmax": vmax,
-                "annot": aligned_texts if show_text_with_kl else True,
+                "annot": True,
                 "fmt": ".1f",
             }
         )
@@ -183,11 +178,21 @@ def plot_logit_lens(
     probs=False,
     ranks=False,
     kl=False,
-    show_text_with_kl=False,
-    layer_names=None,
+    block_step=1,
+    include_input=True,
+    force_include_output=True,
+    include_subblocks=False,
     verbose=False
 ):
-    make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, verbose=verbose)
+    layer_names = make_layer_names(
+        model,
+        block_step=block_step,
+        include_input=include_input,
+        force_include_output=force_include_output,
+        include_subblocks=include_subblocks,
+    )
+
+    make_lens_hooks(model, start_ix=start_ix, end_ix=end_ix, layer_names=layer_names, verbose=verbose)
 
     layer_logits, layer_names = collect_logits(
         model, input_ids, layer_names=layer_names
@@ -205,6 +210,5 @@ def plot_logit_lens(
         probs=probs,
         ranks=ranks,
         kl=kl,
-        show_text_with_kl=show_text_with_kl,
         layer_names=layer_names,
     )
