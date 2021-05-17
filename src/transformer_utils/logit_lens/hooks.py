@@ -60,9 +60,13 @@ def _sqz(x):
 
 def _get_layer_and_compose_with_ln(model, name):
     if name.endswith('.attn'):
-        ln = _get_layer(model, name[:-len('.attn')] + '.ln_1')
+        lname = name[:-len('.attn')] + '.ln_1'
+        ln = _get_layer(model, lname)
+        print(f'composing {name} with {lname}')
     elif name.endswith('.mlp'):
-        ln = _get_layer(model, name[:-len('.attn')] + '.ln_2')
+        lname = name[:-len('.mlp')] + '.ln_2'
+        ln = _get_layer(model, lname)
+        print(f'composing {name} with {lname}')
     else:
         ln = lambda x: x
     return lambda x: _get_layer(model, name)(ln(x))
