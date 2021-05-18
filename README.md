@@ -52,6 +52,33 @@ input_ids = text_to_input_ids("This is an example. You can probably think of a m
 plot_logit_lens(model, tokenizer, input_ids, start_ix=0, end_ix=45)  # logits
 
 plot_logit_lens(model, tokenizer, input_ids, start_ix=0, end_ix=45, probs=True)  # probabilities
+
+plot_logit_lens(model, tokenizer, input_ids, start_ix=0, end_ix=45, kl=True)  # K-L divergence
+```
+
+You can do also some other things that aren't in the original blog posts.  This will break down the transformer blocks into their attention and MLP parts:
+
+```python
+plot_logit_lens(model, tokenizer, input_ids, start_ix=0, end_ix=45, include_subblocks=True)
+```
+
+You can also change the definition of the "decoder" to include some of the later blocks/subblocks of the model.  This helps especially in interpreting GPT-Neo hidden states.
+
+```python
+# assume we have a 48-layer model
+# so 'h.47' is the final layer
+
+# include last layer in decoder
+plot_logit_lens(
+    model, tokenizer, input_ids, start_ix=0, end_ix=45,
+    decoder_layer_names=['h.47', 'final_layernorm', 'lm_head']
+)
+
+# include just the last MLP subblock in decoder
+plot_logit_lens(
+    model, tokenizer, input_ids, start_ix=0, end_ix=45,
+    decoder_layer_names=['h.47.mlp', 'final_layernorm', 'lm_head']
+)
 ```
 
 ### Get activations from any part of the model
