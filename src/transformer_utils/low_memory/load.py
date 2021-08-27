@@ -1,3 +1,4 @@
+import gc
 import torch
 import transformers
 
@@ -89,6 +90,7 @@ def low_memory_load(
             for k in sdks:
                 del state_dict[k]
             handled.add(prefix)
+            gc.collect()
 
         # END gpu --> cpu --> gpu handoff, one leaf module at a time
 
