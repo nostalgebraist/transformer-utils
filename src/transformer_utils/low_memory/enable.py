@@ -7,7 +7,7 @@ _TFM_PRETRAINED_MODEL_FROM_PRETRAINED_ORIGINAL = transformers.modeling_utils.Pre
 
 
 def low_memory_from_pretrained(pretrained_model_name_or_path, *args, **kwargs):
-    config_path, model_path = huggingface_model_local_paths(pretrained_model_name_or_path)
+    config_path, model_path = huggingface_model_local_paths(pretrained_model_name_or_path, *args, **kwargs)
 
     model = low_memory_load(config_path=config_path, model_path=model_path, verbose=False)
 
