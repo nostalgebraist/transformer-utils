@@ -6,7 +6,7 @@ import scipy.special
 import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import colorcet  # noqa
+# import colorcet  # noqa
 
 from ..util.python_utils import make_print_if_verbose
 
@@ -30,12 +30,35 @@ def collect_logits(model, input_ids, layer_names, decoder_layer_names):
     return layer_logits, layer_names
 
 
-def postprocess_logits(layer_logits):
+def postprocess_logits(layer_logits, tokenizer, topk: int):
+    
+    probs = torch.softmax(torch.tensor(layer_logits), dim=-1)
+
+    topk_logits = torch.topk(probs, topk)
     layer_preds = layer_logits.argmax(axis=-1)
-
     layer_probs = scipy.special.softmax(layer_logits, axis=-1)
+    print('layer_preds', layer_preds.shape) # [, predicted_tokens]
+    print('layer_probs', layer_probs.shape)
+    nested_layer_preds = topk_logits.indices.tolist()
+    nested_layer_probs = topk_logits.values.tolist()
+    display_preds = []
 
-    return layer_preds, layer_probs
+    for l, layer in enumerate(nested_layer_preds):
+        current_sequence = []
+        for i, group in enumerate(layer):
+            current_group = ''
+            for j, pred in enumerate(group):
+                current_group += f"('{num2tok(int(pred), tokenizer)}' {round(nested_layer_probs[l][i][j], 4)})\n"
+            current_sequence.append(current_group)
+
+        # if l < 2 and i < 2:
+        #     print(f'layer {l} group {i} layer_preds', current_group)
+        #     print('nested_layer_probs[l][i][0]', nested_layer_probs[l][i][0])
+        display_preds.append(current_sequence)
+    display_preds = np.array(display_preds, dtype=np.object)
+    print('display_preds.shape', display_preds.shape, display_preds.dtype)
+    # print(display_preds)
+    return layer_preds, layer_probs, display_preds
 
 
 def get_value_at_preds(values, preds):
@@ -63,6 +86,7 @@ def _plot_logit_lens(
     layer_logits,
     layer_preds,
     layer_probs,
+    display_preds,
     tokenizer,
     input_ids,
     start_ix,
@@ -70,7 +94,9 @@ def _plot_logit_lens(
     probs=False,
     ranks=False,
     kl=False,
-    top_down=False
+    top_down=False,
+    topk: int = 1,
+    cmap='nipy_spectral'
 ):
     end_ix = start_ix + layer_logits.shape[1]
 
@@ -90,24 +116,24 @@ def _plot_logit_lens(
         if ranks:
             to_show = (numeric_input >= to_show[:, :, np.newaxis]).sum(axis=-1)
 
-    _num2tok = np.vectorize(
-        partial(num2tok, tokenizer=tokenizer, quotemark="'"), otypes=[str]
-    )
-    aligned_texts = _num2tok(aligned_preds)
+    # _num2tok = np.vectorize(
+    #     partial(num2tok, tokenizer=tokenizer, quotemark="'"), otypes=[str]
+    # )
+    aligned_texts = aligned_preds #  _num2tok(aligned_preds)
 
     to_show = to_show[::-1]
 
     aligned_texts = aligned_texts[::-1]
 
-    fig = plt.figure(figsize=(1.5 * to_show.shape[1], 0.375 * to_show.shape[0]))
+    fig = plt.figure(figsize=(2.5 * to_show.shape[1], 0.375 * topk * to_show.shape[0]))
 
-    plot_kwargs = {"annot": aligned_texts, "fmt": ""}
+    plot_kwargs = {"annot": display_preds[::-1], "fmt": ""}
     if kl:
         vmin, vmax = None, None
 
         plot_kwargs.update(
             {
-                "cmap": "cet_linear_protanopic_deuteranopic_kbw_5_98_c40_r",
+                "cmap": cmap,
                 "vmin": vmin,
                 "vmax": vmax,
                 "annot": True,
@@ -131,7 +157,7 @@ def _plot_logit_lens(
 
         plot_kwargs.update(
             {
-                "cmap": "cet_linear_protanopic_deuteranopic_kbw_5_98_c40",
+                "cmap": cmap,
                 "vmin": vmin,
                 "vmax": vmax,
             }
@@ -140,7 +166,9 @@ def _plot_logit_lens(
     sns.heatmap(to_show, **plot_kwargs)
 
     ax = plt.gca()
-    input_tokens_str = _num2tok(input_ids[0].cpu())
+    # input_ids shape like [[0,1,2]] for ids 0,1,2
+    input_tokens_str = [num2tok(x, tokenizer) for x in input_ids[0].cpu()]
+    print(input_ids, input_tokens_str) # should be the same as the input string as broken into tokens
     if layer_names is None:
       layer_names = ["Layer {}".format(n) for n in range(to_show.shape[0])]
 
@@ -183,7 +211,8 @@ def plot_logit_lens(
     include_subblocks=False,
     decoder_layer_names: list = ['final_layernorm', 'lm_head'],
     verbose=False,
-    top_down=False
+    top_down=False,
+    topk: int = 1
 ):
     """
     Draws "logit lens" plots, and generalizations thereof.
@@ -232,6 +261,10 @@ def plot_logit_lens(
             Prepending one or more of the last layers of the model, e.g. `['h11', 'final_layernorm', 'lm_head']`
             for a 12-layer model, will treat these layers as part of the decoder.  In the general case, this is equivalent
             to dropping different subsets of interior layers and watching how the output varies.
+        top_down:
+            reverse order so that the input is on top in the plot, and the output on the bottom
+        topk:
+            number of top k tokens to display per layer. Default is 1, just the top prediction.
     """
     layer_names = make_layer_names(
         model,
@@ -250,12 +283,13 @@ def plot_logit_lens(
         model, input_ids, layer_names=layer_names, decoder_layer_names=decoder_layer_names,
     )
 
-    layer_preds, layer_probs = postprocess_logits(layer_logits)
+    layer_preds, layer_probs, display_preds = postprocess_logits(layer_logits, tokenizer, topk)
 
     _plot_logit_lens(
         layer_logits=layer_logits,
         layer_preds=layer_preds,
         layer_probs=layer_probs,
+        display_preds=display_preds,
         tokenizer=tokenizer,
         input_ids=input_ids,
         start_ix=start_ix,
@@ -263,5 +297,6 @@ def plot_logit_lens(
         ranks=ranks,
         kl=kl,
         layer_names=layer_names,
-        top_down=top_down
+        top_down=top_down,
+        topk=topk
     )
