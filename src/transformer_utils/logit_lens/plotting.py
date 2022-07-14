@@ -70,7 +70,7 @@ def _plot_logit_lens(
     probs=False,
     ranks=False,
     kl=False,
-    top_down=False
+    top_down=False,
 ):
     end_ix = start_ix + layer_logits.shape[1]
 
@@ -141,31 +141,34 @@ def _plot_logit_lens(
 
     ax = plt.gca()
     input_tokens_str = _num2tok(input_ids[0].cpu())
-    if layer_names is None:
-      layer_names = ["Layer {}".format(n) for n in range(to_show.shape[0])]
 
+    if layer_names is None:
+        layer_names = ["Layer {}".format(n) for n in range(to_show.shape[0])]
     ylabels = layer_names[::-1]
     ax.set_yticklabels(ylabels, rotation=0)
 
-    starred = [
-          "* " + true if pred == true else " " + true
-          for pred, true in zip(
-              aligned_texts[0], input_tokens_str[start_ix + 1 : end_ix + 1]
-          )
-      ]
-    padw = 0.5 / to_show.shape[1]
     ax_top = ax.twiny()
-    
-    if top_down:
-      ax.invert_yaxis()
-      ax.set_xticklabels(starred, rotation=0)
-      ax_top.set_xticks(np.linspace(padw, 1 - padw, to_show.shape[1]))
-      ax_top.set_xticklabels(input_tokens_str[start_ix:end_ix], rotation=0)
 
-    else:
-      ax.set_xticklabels(input_tokens_str[start_ix:end_ix], rotation=0)
-      ax_top.set_xticks(np.linspace(padw, 1 - padw, to_show.shape[1]))
-      ax_top.set_xticklabels(starred, rotation=0)
+    padw = 0.5 / to_show.shape[1]
+    ax_top.set_xticks(np.linspace(padw, 1 - padw, to_show.shape[1]))
+
+    ax_inputs = ax
+    ax_targets = ax_top
+
+    if top_down:
+        ax.invert_yaxis()
+        ax_inputs = ax_top
+        ax_targets = ax
+
+    ax_inputs.set_xticklabels(input_tokens_str[start_ix:end_ix], rotation=0)
+
+    starred = [
+        "* " + true if pred == true else " " + true
+        for pred, true in zip(
+            aligned_texts[0], input_tokens_str[start_ix + 1 : end_ix + 1]
+        )
+    ]
+    ax_targets.set_xticklabels(starred, rotation=0)
 
 
 def plot_logit_lens(
@@ -182,34 +185,46 @@ def plot_logit_lens(
     force_include_output=True,
     include_subblocks=False,
     decoder_layer_names: list = ['final_layernorm', 'lm_head'],
-    verbose=False,
-    top_down=False
+    top_down=False,
+    verbose=False
 ):
     """
     Draws "logit lens" plots, and generalizations thereof.
+
     For background, see
         https://www.lesswrong.com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens
         https://jalammar.github.io/hidden-states/
+
     `model`, `tokenizer` and `input_ids` should be familiar from the transformers library.  Other args are
      documented below.
+
     `model` should be a `transformers.PreTrainedModel` with an `lm_head`, e.g. `GPTNeoForCausalLM`.
+
     Note that using `start_ix` and `end_ix` is not equivalent to passed an `input_ids` sliced like `input_ids[start_ix:end_ix]`.  The LM will see the entire input you pass in as `input_ids`, no matter how you set `start_ix` and `end_ix`.  These "ix" arguments only control what is _displayed_.
+
     The boolean arguments `probs`, `ranks` and `kl` control the type of plot.  The options are:
+
         - Logits (the default plot type, if `probs`, `ranks` and `kl` are all False):
             - cell color: logit assigned by each layer to the final layer's top-1 token prediction
             - cell text:  top-1 token prediction at each layer
+
         - Probabilities:
             - cell color: probability assigned by each layer to the final layer's top-1 token prediction
             - cell text:  top-1 token prediction at each layer
+
         - Ranks:
             - cell color: ranking over the vocab assigned by each layer to the final layer's top-1 token prediction
             - cell text:  same as cell color
+
         - KL:
             - cell color: KL divergence of each layer's probability distribtion w/r/t the final layer's
             - cell text:  same as cell color
+
     `include_subblocks` and `decoder_layer_names` allow the creation of plots that go beyond what was done
     in the original blog post.  See below for details
+
     Arguments:
+
         probs:
             draw a "Probabilities" plot
         ranks:
@@ -227,8 +242,10 @@ def plot_logit_lens(
             full block
         decoder_layer_names:
             defines the subset of the model used to "decode" hidden states.
+
             The default value `['final_layernorm', 'lm_head']` corresponds to the ordinary "logit lens," where
             we decode each layer's output as though it were the output of the final block.
+
             Prepending one or more of the last layers of the model, e.g. `['h11', 'final_layernorm', 'lm_head']`
             for a 12-layer model, will treat these layers as part of the decoder.  In the general case, this is equivalent
             to dropping different subsets of interior layers and watching how the output varies.
@@ -263,5 +280,5 @@ def plot_logit_lens(
         ranks=ranks,
         kl=kl,
         layer_names=layer_names,
-        top_down=top_down
+        top_down=top_down,
     )

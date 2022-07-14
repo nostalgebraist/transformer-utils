@@ -23,6 +23,7 @@ setup(
         'torch',
         'transformers',
         'seaborn',
-        'tqdm'
+        'tqdm',
+        'colorcet'
     ],
 )
