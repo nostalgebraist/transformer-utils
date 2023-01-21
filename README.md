@@ -36,6 +36,7 @@ Inference will work up to the full context window length of 2048 tokens without 
 ```python
 import torch
 import transformers
+from transformer_utils.logit_lens import plot_logit_lens
 from transformer_utils.low_memory import enable_low_memory_load
 
 enable_low_memory_load()
