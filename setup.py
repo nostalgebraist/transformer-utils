@@ -24,6 +24,7 @@ setup(
         'transformers',
         'seaborn',
         'tqdm',
-        'colorcet'
+        'colorcet',
+        'scipy',
     ],
 )
